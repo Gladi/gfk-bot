@@ -59,6 +59,8 @@ T = {
     "verw_status_set": "➡️ {target} ist jetzt **{role}** (durch {actor})",
     "status_denied": "🔒 Das darfst du nicht. Freund und Mitglied vergibt die Führung, Führung nur der Admiral.",
     "status_gone": "⚠️ Die Person ist nicht mehr auf dem Server.",
+    "status_gfk_only": "🔒 {role} gibt es nur für GFK. {target} ist mit {tag} eingetragen - erst den Namen mit dem "
+                       "Kürzel GFK ändern lassen (Button „Namen ändern“).",
     "status_done": "✅ {target} ist jetzt **{role}**.",
     "status_already": "ℹ️ {target} ist schon **{role}**.",
     "sync_renamed": "✏️ Abgleich mit stfc.pro: {user} heißt jetzt **{nick}** (vorher {old}).",

@@ -53,6 +53,15 @@ class StatusRightsTests(unittest.TestCase):
         self.assertTrue(names.may_grant({"admiral"}, "mitglied", {"fuehrung"}))
         self.assertFalse(names.may_grant({"admiral"}, "mitglied", {"admiral"}))     # den Admiral ändert der Bot nie
 
+    def test_member_and_leadership_only_for_gfk(self):
+        self.assertTrue(names.allowed_for_alliance("mitglied", "GFK"))
+        self.assertTrue(names.allowed_for_alliance("fuehrung", "gfk"))
+        self.assertFalse(names.allowed_for_alliance("mitglied", "ABC"))
+        self.assertFalse(names.allowed_for_alliance("fuehrung", ""))
+        self.assertFalse(names.allowed_for_alliance("mitglied", None))
+        self.assertTrue(names.allowed_for_alliance("freund", "ABC"))
+        self.assertTrue(names.allowed_for_alliance("gast", None))
+
     def test_status_change_keeps_exactly_one(self):
         self.assertEqual(names.status_change({"gast"}, "mitglied", st.STATUS_ROLES), (["gast"], ["mitglied"]))
         self.assertEqual(names.status_change(set(), "gast", st.STATUS_ROLES), ([], ["gast"]))

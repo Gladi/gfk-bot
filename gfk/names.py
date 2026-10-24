@@ -32,6 +32,14 @@ def nickname(tag: Optional[str], name: str) -> str:
 
 
 # Status-Rollen (Schlüssel aus settings.STATUS_ROLES) - wer darf wen wozu machen
+GFK_ONLY = {"mitglied", "fuehrung"}    # nur für Personen mit dem Allianzkürzel GFK
+
+
+def allowed_for_alliance(target: str, alliance: Optional[str], gfk_tag: str = "GFK") -> bool:
+    """Mitglied und Führung nur mit GFK-Kürzel; Freund und Gast für alle."""
+    return target not in GFK_ONLY or (alliance or "").upper() == gfk_tag
+
+
 GRANTABLE_BY_FUEHRUNG = ["gast", "freund", "mitglied"]
 GRANTABLE_BY_ADMIRAL = ["gast", "freund", "mitglied", "fuehrung"]
 

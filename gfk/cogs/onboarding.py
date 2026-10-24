@@ -132,6 +132,13 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
         if not names.may_grant(status_of(interaction.user, config), self.role, current):
             await interaction.response.send_message(t("status_denied"), ephemeral=True)
             return
+        row = await db.get_member(guild.id, target.id)
+        alliance = row[0] if row else ""
+        if not names.allowed_for_alliance(self.role, alliance, stfc.ALLIANCE_TAG):
+            await interaction.response.send_message(
+                t("status_gfk_only", target=target.mention, role=st.ROLE_KEYS[self.role],
+                  tag=f"[{alliance}]" if alliance else t("verw_no_ally")), ephemeral=True)
+            return
         label = st.ROLE_KEYS[self.role]
         if self.role in current and len(current) == 1:
             await interaction.response.send_message(t("status_already", target=target.mention, role=label),
@@ -146,10 +153,12 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
             await interaction.message.edit(embed=embed)
 
 
-def status_view(user_id: int) -> discord.ui.View:
+def status_view(user_id: int, alliance: Optional[str]) -> discord.ui.View:
+    """Buttons für die Führung; ohne GFK-Kürzel nur "Freund" (Mitglied/Führung nur für GFK)."""
     view = discord.ui.View(timeout=None)
     for role in ("freund", "mitglied", "fuehrung"):
-        view.add_item(StatusButton(user_id, role))
+        if names.allowed_for_alliance(role, alliance, stfc.ALLIANCE_TAG):
+            view.add_item(StatusButton(user_id, role))
     return view
 
 
@@ -211,7 +220,7 @@ class OnboardingCog(commands.Cog):
                                 else t("verw_stfc_missing"))
             elif not tag:
                 embed.add_field(name=t("verw_alliance"), value=t("verw_no_ally"))
-            await notify_verwaltung(guild, embed=embed, view=status_view(member.id))
+            await notify_verwaltung(guild, embed=embed, view=status_view(member.id, tag))
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
