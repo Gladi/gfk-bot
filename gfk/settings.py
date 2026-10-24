@@ -14,7 +14,7 @@ ROLE_KEYS = {
 }
 CHANNEL_KEYS = {
     "eingang": "Eingangskanal", "meldungen": "Meldungskanal", "vorfallforum": "Vorfallforum", "events": "Eventkanal",
-    "event_kategorie": "Event-Kategorie (Sprachkanäle)", "log": "Log-Kanal",
+    "event_kategorie": "Event-Kategorie (Sprachkanäle)", "verwaltung": "Verwaltung (Nachrichten an die Führung)",
 }
 REMINDER_KEY = "erinnerung_minuten"
 REMINDER_DEFAULT, REMINDER_MIN, REMINDER_MAX = 30, 5, 240

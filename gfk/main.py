@@ -25,7 +25,7 @@ log = logging.getLogger("gfk")
 
 HEARTBEAT_FILE = "/tmp/gfk_heartbeat"     # Docker-Healthcheck prüft das Alter dieser Datei
 WATCHDOG_SECONDS = 600                     # so lange ohne Discord-Verbindung -> Prozess beenden, Docker startet neu
-COGS = ["gfk.cogs.setup"]
+COGS = ["gfk.cogs.setup", "gfk.cogs.onboarding"]
 
 
 class GfkBot(commands.Bot):
@@ -55,6 +55,8 @@ class GfkBot(commands.Bot):
 
     async def close(self):
         self.heartbeat.cancel()
+        if getattr(self, "web", None) is not None and not self.web.closed:
+            await self.web.close()
         await super().close()
 
     async def on_ready(self):

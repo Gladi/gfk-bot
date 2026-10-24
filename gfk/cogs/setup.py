@@ -24,7 +24,7 @@ CHANNEL_PERMS = {
     "events": ["view_channel", "send_messages", "embed_links", "create_public_threads", "create_private_threads",
                "send_messages_in_threads", "manage_threads"],
     "event_kategorie": ["view_channel", "manage_channels"],
-    "log": ["view_channel", "send_messages", "embed_links"],
+    "verwaltung": ["view_channel", "send_messages", "embed_links"],
 }
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
 
@@ -68,16 +68,17 @@ def status_lines(guild: discord.Guild, config: Dict[str, str]) -> List[str]:
     return lines
 
 
-async def send_log(guild: discord.Guild, text: str):
-    """Nachricht in den Log-Kanal (falls eingerichtet); nie mit Pings."""
+async def notify_verwaltung(guild: discord.Guild, text: str = None, **kwargs):
+    """Nachricht an die Führung im Kanal Verwaltung (falls eingerichtet); nie mit Pings. Liefert die Nachricht."""
     config = await db.get_config(guild.id)
-    ch = _channel(guild, config, "log")
+    ch = _channel(guild, config, "verwaltung")
     if ch is None:
-        return
+        return None
     try:
-        await ch.send(text, allowed_mentions=discord.AllowedMentions.none())
+        return await ch.send(text, allowed_mentions=discord.AllowedMentions.none(), **kwargs)
     except discord.HTTPException as exc:
-        log.warning("Log-Kanal nicht beschreibbar (%s): %s", guild.id, exc)
+        log.warning("Kanal Verwaltung nicht beschreibbar (%s): %s", guild.id, exc)
+        return None
 
 
 @app_commands.guild_only()
@@ -100,7 +101,7 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         await db.set_config(interaction.guild_id, values)
         items = ", ".join(labels)
         await interaction.response.send_message(t("setup_saved", items=items), ephemeral=True)
-        await send_log(interaction.guild, t("log_setup", user=interaction.user.mention, items=items))
+        await notify_verwaltung(interaction.guild, t("log_setup", user=interaction.user.mention, items=items))
 
     @app_commands.command(name="rollen", description="Status-Rollen festlegen")
     @app_commands.rename(fuehrung="führung")
@@ -118,9 +119,9 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
                        vorfallforum: Optional[discord.ForumChannel] = None,
                        events: Optional[discord.TextChannel] = None,
                        event_kategorie: Optional[discord.CategoryChannel] = None,
-                       log: Optional[discord.TextChannel] = None):
+                       verwaltung: Optional[discord.TextChannel] = None):
         given = {"eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
-                 "event_kategorie": event_kategorie, "log": log}
+                 "event_kategorie": event_kategorie, "verwaltung": verwaltung}
         values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
         labels = [f"{st.CHANNEL_KEYS[k]} = #{c.name}" for k, c in given.items() if c is not None]
         await self._save(interaction, values, labels)

@@ -100,3 +100,44 @@ def set_config_sync(guild_id: int, values: Dict[str, Optional[str]]):
 
 get_config = _async(get_config_sync)
 set_config = _async(set_config_sync)
+
+
+# ----------------- Mitglieder (Eingangskontrolle, Abgleich mit stfc.pro) -----------------
+def save_member_sync(guild_id: int, user_id: int, alliance: str, game_name: str, player_id: Optional[int]):
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO members (guild_id, user_id, alliance, game_name, stfc_player_id, nick_synced_at) "
+            "VALUES (?, ?, ?, ?, ?, datetime('now')) ON CONFLICT (guild_id, user_id) DO UPDATE SET "
+            "alliance = excluded.alliance, game_name = excluded.game_name, stfc_player_id = excluded.stfc_player_id, "
+            "nick_synced_at = excluded.nick_synced_at", (guild_id, user_id, alliance, game_name, player_id))
+
+
+def get_member_sync(guild_id: int, user_id: int):
+    with _conn() as conn:
+        return conn.execute("SELECT alliance, game_name, stfc_player_id FROM members WHERE guild_id = ? AND user_id = ?",
+                            (guild_id, user_id)).fetchone()
+
+
+def linked_members_sync(guild_id: int):
+    """(user_id, alliance, game_name, stfc_player_id) aller Mitglieder mit Spieler-ID."""
+    with _conn() as conn:
+        return conn.execute("SELECT user_id, alliance, game_name, stfc_player_id FROM members "
+                            "WHERE guild_id = ? AND stfc_player_id IS NOT NULL", (guild_id,)).fetchall()
+
+
+def delete_member_sync(guild_id: int, user_id: int):
+    with _conn() as conn:
+        conn.execute("DELETE FROM members WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+
+
+def log_role_change_sync(guild_id: int, actor_id: int, target_id: int, old: str, new: str):
+    with _conn() as conn:
+        conn.execute("INSERT INTO role_log (guild_id, actor_id, target_id, old_role, new_role, at) "
+                     "VALUES (?, ?, ?, ?, ?, datetime('now'))", (guild_id, actor_id, target_id, old, new))
+
+
+save_member = _async(save_member_sync)
+get_member = _async(get_member_sync)
+linked_members = _async(linked_members_sync)
+delete_member = _async(delete_member_sync)
+log_role_change = _async(log_role_change_sync)

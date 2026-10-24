@@ -9,6 +9,9 @@ import discord
 
 from gfk.texts import t
 
+# Art -> Funktion(interaction), eingetragen von den Modulen (z. B. Eingangskontrolle: "lobby"); sonst Platzhalter
+HANDLERS = {}
+
 PANELS = {
     # art: (Kanal-Schlüssel, Titel, Text, Button, Emoji, Farbe)
     "lobby": ("eingang", "panel_lobby_title", "panel_lobby_text", "panel_lobby_button", "✏️", discord.Color.blurple()),
@@ -32,7 +35,11 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=r"gfk:pane
         return cls(kind)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(t("follows"), ephemeral=True)
+        handler = HANDLERS.get(self.kind)
+        if handler is None:
+            await interaction.response.send_message(t("follows"), ephemeral=True)
+        else:
+            await handler(interaction)
 
 
 def panel_message(kind: str):

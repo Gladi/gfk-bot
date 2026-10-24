@@ -21,7 +21,7 @@ from gfk.cogs.setup import post_panels, status_lines
 CATEGORY = "gfk-bot"
 CHANNEL_NAMES = {"lobby": "eingang", "event": "events", "report": "meldungen", "reports": "vorfallforum",
                  "reportsforum": "vorfallforum"}
-LOG_NAME = "gfk-log"
+VERWALTUNG_NAMES = ["verwaltung", "gfk-verwaltung", "gfk-log"]   # gfk-log = alter Name auf dem Test-Server
 ROLE_ORDER = ["Admiral", "Führung", "Mitglied", "Freund", "Gast"]
 ROLE_TO_KEY = {"Admiral": "admiral", "Führung": "fuehrung", "Mitglied": "mitglied", "Freund": "freund", "Gast": "gast"}
 
@@ -40,10 +40,14 @@ async def seed(guild: discord.Guild):
         if key:
             values[st.channel_key(key)] = str(ch.id)
             print(f"  Kanal #{ch.name} -> {st.CHANNEL_KEYS[key]}")
-    log_ch = next((c for c in cat.text_channels if c.name == LOG_NAME), None) or \
-        await cat.create_text_channel(LOG_NAME, reason="GFK-Test: Log-Kanal")
-    values[st.channel_key("log")] = str(log_ch.id)
-    print(f"  Kanal #{log_ch.name} -> Log-Kanal")
+    verw = next((c for c in cat.text_channels if c.name in VERWALTUNG_NAMES), None)
+    if verw is None:
+        verw = await cat.create_text_channel("verwaltung", reason="GFK-Test: Verwaltung")
+    elif verw.name != "verwaltung":
+        await verw.edit(name="verwaltung", reason="GFK-Test: Verwaltung statt Log-Kanal")
+    values[st.channel_key("verwaltung")] = str(verw.id)
+    values[st.channel_key("log")] = None
+    print(f"  Kanal #verwaltung -> Verwaltung")
     existing = {r.name: r for r in guild.roles}
     for name in ROLE_ORDER:
         role = existing.get(name) or await guild.create_role(name=name, reason="GFK-Test: Status-Rolle")

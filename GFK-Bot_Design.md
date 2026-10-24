@@ -23,7 +23,7 @@ Der Bot ist nur allianzintern nutzbar (Mitglied, Führung, Admiral). Einzige Aus
 - Admiral-Rolle und Führungsrolle
 - Status-Rollen: „Gast“ (nach der Namensänderung), „Freund“, „Mitglied“ und
   „Führung“ (vergibt die Führung, siehe Abschnitt 3)
-- Kanäle: Meldungskanal, Vorfallforum, Eingangskanal, Eventkanal (nur allianzintern sichtbar), Event-Kategorie für die Sprachkanäle
+- Kanäle: Verwaltung (Nachrichten an die Führung, z. B. `#verwaltung`), Meldungskanal, Vorfallforum, Eingangskanal, Eventkanal (nur allianzintern sichtbar), Event-Kategorie für die Sprachkanäle
 - Erinnerungsvorlauf für Events (Standard 30 Minuten)
 - `/setup panels` postet die Button-Nachrichten in die Kanäle neu
 
@@ -76,7 +76,7 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 
 1. Neue Nutzer haben keine Rolle und sehen nur den Eingangskanal (Kanalrechte für `@everyone`, kein Zutun des Bots).
 2. Dort steht eine feste Nachricht mit Button „Namen ändern“.
-3. Modal: Allianz und In-Game-Name (beide Pflicht).
+3. Modal: Allianzkürzel (optional - leer = keine Allianz, Nickname dann nur `Name`) und Spielname (Pflicht).
 4. Bot setzt den Server-Nickname im Format `[ALLY] Name` (maximal 32 Zeichen; zu lang -> der Name wird gekürzt, nie
    das Kürzel).
    - **GFK-Mitglieder:** Der Bot gleicht den Spielernamen mit der Mitgliederliste auf
@@ -85,7 +85,8 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
      (Abgleich 1x täglich, eine Seite pro Abruf).
    - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
 5. Nach der Umbenennung gibt der Bot automatisch „Gast“.
-6. Die Führung erhält eine Benachrichtigung (Führungs- oder Log-Kanal) mit Buttons „Freund“, „Mitglied“, „Führung“;
+6. Die Führung erhält eine Benachrichtigung in **Verwaltung** mit Buttons „Freund“, „Mitglied“, „Führung“
+   (Führung nur durch den Admiral);
    alternativ später per `/status`.
 7. Hinweis: Den Nickname des Server-Eigentümers und von Personen mit Rollen über der Bot-Rolle kann der Bot nicht ändern.
 
@@ -149,6 +150,20 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 - Zum konfigurierten Vorlauf pingt der Bot alle angemeldeten bzw. ausgewählten Teilnehmer (allianzweit im Eventkanal, privat im Thread)
 - Optional zweite Erinnerung zum Start
 - Erinnerungsstatus in SQLite, damit nach einem Neustart nichts doppelt oder gar nicht gesendet wird
+
+## 6b. Modul Server-Logs (ersetzt den SCNX-Bot)
+
+Jedes Log einzeln konfigurierbar (`/setup`), leer = aus; mehrere Logs dürfen in denselben Kanal.
+- **user-log:** Beitritt (Konto-Alter) und Austritt, Nickname- und Rollenänderungen (bei Änderungen durch den Bot mit
+  „im Auftrag von …“), Kick, Bann, Timeout (wer: über das Audit-Log). Welche Einladung benutzt wurde, geht nur mit dem
+  Recht „Server verwalten“ - offen.
+- **rollen-log:** Rollen erstellt, gelöscht, geändert.
+- **kanal-log:** Kanäle erstellt, gelöscht, geändert (inkl. Rechte).
+- **msg-log:** bearbeitete und gelöschte Nachrichten mit altem Text. Braucht den Message Content Intent und einen
+  Zwischenspeicher der Nachrichten (eigene Datei, nicht im Backup, automatisch gelöscht nach N Tagen; N wie bei SCNX -
+  SCNX dokumentiert keinen Wert, daher einstellbar). Hinweis in den Serverregeln nötig.
+- **invite-log:** entfällt.
+- Bot-Rechte zusätzlich: Audit-Log anzeigen. SCNX läuft beim Umstieg einige Tage parallel.
 
 ## 7. Datenmodell (SQLite)
 
