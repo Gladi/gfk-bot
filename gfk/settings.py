@@ -16,6 +16,10 @@ CHANNEL_KEYS = {
     "eingang": "Eingangskanal", "meldungen": "Meldungskanal", "vorfallforum": "Vorfallforum", "events": "Eventkanal",
     "event_kategorie": "Event-Kategorie (Sprachkanäle)", "verwaltung": "Verwaltung (Nachrichten an die Führung)",
 }
+# Server-Logs (ersetzen SCNX): optional, leer = aus
+LOG_KEYS = {"log_user": "user-log", "log_rollen": "rollen-log", "log_kanal": "kanal-log", "log_msg": "msg-log"}
+MSG_DAYS_KEY = "msg_tage"
+MSG_DAYS_DEFAULT, MSG_DAYS_MIN, MSG_DAYS_MAX = 7, 1, 30
 REMINDER_KEY = "erinnerung_minuten"
 REMINDER_DEFAULT, REMINDER_MIN, REMINDER_MAX = 30, 5, 240
 # Rollen, die der Bot selbst vergibt - die Bot-Rolle muss über all diesen stehen
@@ -36,6 +40,15 @@ def reminder_minutes(config: Dict[str, str]) -> int:
     except ValueError:
         return REMINDER_DEFAULT
     return min(max(value, REMINDER_MIN), REMINDER_MAX)
+
+
+def msg_days(config: Dict[str, str]) -> int:
+    """Wie lange der msg-log Nachrichten im Arbeitsspeicher behält (Tage)."""
+    try:
+        value = int(config.get(MSG_DAYS_KEY, MSG_DAYS_DEFAULT))
+    except ValueError:
+        return MSG_DAYS_DEFAULT
+    return min(max(value, MSG_DAYS_MIN), MSG_DAYS_MAX)
 
 
 def missing(config: Dict[str, str]) -> List[str]:

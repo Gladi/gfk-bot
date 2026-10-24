@@ -1,7 +1,7 @@
 """
 GFK-Bot - Werkzeug für den Test-Server (nur mit GFK_DEV_GUILD, nie auf dem echten Server).
 
-    python -m gfk.devtools seed     # Kanäle der Kategorie "gfk-bot" zuordnen, fehlende Rollen/Log-Kanal anlegen
+    python -m gfk.devtools seed     # Kanäle der Kategorie "gfk-bot" zuordnen, fehlende Rollen/Verwaltung/Logs anlegen
     python -m gfk.devtools status   # Prüfung wie /setup anzeigen
     python -m gfk.devtools panels   # feste Nachrichten posten bzw. aktualisieren
 
@@ -48,6 +48,14 @@ async def seed(guild: discord.Guild):
     values[st.channel_key("verwaltung")] = str(verw.id)
     values[st.channel_key("log")] = None
     print(f"  Kanal #verwaltung -> Verwaltung")
+    hidden = {guild.default_role: discord.PermissionOverwrite(view_channel=False),
+              guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, embed_links=True)}
+    for key, name in st.LOG_KEYS.items():
+        ch = next((c for c in cat.text_channels if c.name == name), None)
+        if ch is None:
+            ch = await cat.create_text_channel(name, overwrites=hidden, reason="GFK-Test: Server-Log")
+        values[st.channel_key(key)] = str(ch.id)
+        print(f"  Kanal #{name} -> {name}")
     existing = {r.name: r for r in guild.roles}
     for name in ROLE_ORDER:
         role = existing.get(name) or await guild.create_role(name=name, reason="GFK-Test: Status-Rolle")

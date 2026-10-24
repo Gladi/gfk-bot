@@ -160,15 +160,19 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 
 ## 6b. Modul Server-Logs (ersetzt den SCNX-Bot)
 
-Jedes Log einzeln konfigurierbar (`/setup`), leer = aus; mehrere Logs dürfen in denselben Kanal.
+Jedes Log einzeln konfigurierbar (`/setup logs`, abschalten mit `/setup log_aus`), leer = aus; mehrere Logs dürfen
+in denselben Kanal. Wer etwas geändert hat, kommt aus dem Audit-Log (Änderungen der Person an sich selbst ohne
+„durch“); Nachrichten in Log-Kanälen und von Bots werden nicht geloggt.
 - **user-log:** Beitritt (Konto-Alter) und Austritt, Nickname- und Rollenänderungen (bei Änderungen durch den Bot mit
-  „im Auftrag von …“), Kick, Bann, Timeout (wer: über das Audit-Log). Welche Einladung benutzt wurde, geht nur mit dem
-  Recht „Server verwalten“ - offen.
-- **rollen-log:** Rollen erstellt, gelöscht, geändert.
+  „im Auftrag von …“), Kick, Bann, Timeout (wer: über das Audit-Log). Neue Konten (< 7 Tage) werden markiert.
+- **rollen-log:** Rollen erstellt, gelöscht, geändert (Name, Farbe, Anzeige, Erwähnbarkeit, Rechte; reine
+  Verschiebungen nicht).
 - **kanal-log:** Kanäle erstellt, gelöscht, geändert (inkl. Rechte).
-- **msg-log:** bearbeitete und gelöschte Nachrichten mit altem Text. Braucht den Message Content Intent und einen
-  Zwischenspeicher der Nachrichten (eigene Datei, nicht im Backup, automatisch gelöscht nach N Tagen; N wie bei SCNX -
-  SCNX dokumentiert keinen Wert, daher einstellbar). Hinweis in den Serverregeln nötig.
+- **msg-log:** bearbeitete und gelöschte Nachrichten mit altem Text (auch Massenlöschungen). Braucht den Message
+  Content Intent. Discord liefert bei Löschungen nur die ID - der alte Text kommt aus einem Zwischenspeicher **nur im
+  Arbeitsspeicher** (keine Datei, kein Backup, nach Neustart leer; Dauer `msg_tage`, Standard 7, 1–30; höchstens
+  50 000 Nachrichten). Nachrichten von vor dem letzten Neustart erscheinen daher nicht. Wer eine fremde Nachricht
+  gelöscht hat, zeigt das Audit-Log nur ungefähr (Discord fasst Einträge zusammen). Hinweis in den Serverregeln nötig.
 - **invite-log:** entfällt.
 - Bot-Rechte zusätzlich: Audit-Log anzeigen. SCNX läuft beim Umstieg einige Tage parallel.
 

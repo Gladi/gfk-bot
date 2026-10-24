@@ -25,13 +25,15 @@ log = logging.getLogger("gfk")
 
 HEARTBEAT_FILE = "/tmp/gfk_heartbeat"     # Docker-Healthcheck prüft das Alter dieser Datei
 WATCHDOG_SECONDS = 600                     # so lange ohne Discord-Verbindung -> Prozess beenden, Docker startet neu
-COGS = ["gfk.cogs.setup", "gfk.cogs.onboarding", "gfk.cogs.roles"]
+_synced: list = []                         # Befehle in diesem Prozess schon angemeldet
+COGS = ["gfk.cogs.setup", "gfk.cogs.onboarding", "gfk.cogs.roles", "gfk.cogs.logs"]
 
 
 class GfkBot(commands.Bot):
-    def __init__(self):
+    def __init__(self, message_content: bool = True):
         intents = discord.Intents.default()
-        intents.members = True              # Rollen, Nicknames, Teilnehmer-Auswahl
+        intents.members = True              # Rollen, Nicknames, Teilnehmer-Auswahl, user-log
+        intents.message_content = message_content   # msg-log (alter Text bei Bearbeitung/Löschung)
         super().__init__(command_prefix=commands.when_mentioned, intents=intents,
                          allowed_mentions=discord.AllowedMentions.none())
         self._last_connected = time.monotonic()
@@ -44,13 +46,17 @@ class GfkBot(commands.Bot):
         self.tree.on_error = on_app_command_error
         dev_guild = os.environ.get("GFK_DEV_GUILD", "").strip()
         if dev_guild:
+            self.tree.copy_global_to(guild=discord.Object(int(dev_guild)))
+        if _synced:
+            pass                              # zweiter Start ohne Message Content: schon angemeldet (sonst Rate-Limit)
+        elif dev_guild:
             guild = discord.Object(int(dev_guild))
-            self.tree.copy_global_to(guild=guild)
             synced = await self.tree.sync(guild=guild)
             log.info("%d Befehle auf dem Test-Server %s angemeldet.", len(synced), dev_guild)
         else:
             synced = await self.tree.sync()
             log.info("%d Befehle global angemeldet.", len(synced))
+        _synced.append(True)
         self.heartbeat.start()
 
     async def close(self):
@@ -95,7 +101,12 @@ def main():
     token = os.environ.get("DISCORD_TOKEN", "").strip()
     if not token:
         raise SystemExit("DISCORD_TOKEN fehlt (.env.gfk bzw. .env.gfk-test)")
-    GfkBot().run(token, log_handler=None)
+    try:
+        GfkBot().run(token, log_handler=None)
+    except discord.PrivilegedIntentsRequired:
+        # Message Content Intent im Developer Portal aus: ohne ihn starten, msg-log zeigt dann keine Texte
+        log.warning("Message Content Intent nicht freigeschaltet - Start ohne (msg-log ohne Nachrichtentexte).")
+        GfkBot(message_content=False).run(token, log_handler=None)
 
 
 if __name__ == "__main__":

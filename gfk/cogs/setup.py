@@ -27,6 +27,7 @@ CHANNEL_PERMS = {
     "verwaltung": ["view_channel", "send_messages", "embed_links"],
 }
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
+LOG_PERMS = ["view_channel", "send_messages", "embed_links"]
 
 
 def _role(guild: discord.Guild, config: Dict[str, str], key: str) -> Optional[discord.Role]:
@@ -39,8 +40,9 @@ def _channel(guild: discord.Guild, config: Dict[str, str], key: str):
     return guild.get_channel(int(value)) if value else None
 
 
-def status_lines(guild: discord.Guild, config: Dict[str, str]) -> List[str]:
-    """Probleme der aktuellen Einrichtung als Textzeilen (leer = alles in Ordnung)."""
+def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: Optional[bool] = None) -> List[str]:
+    """Probleme der aktuellen Einrichtung als Textzeilen (leer = alles in Ordnung). message_content: ob der Bot den
+    Message Content Intent hat (None = nicht prüfen, z. B. im Test-Werkzeug)."""
     lines = []
     miss = st.missing(config)
     if miss:
@@ -63,8 +65,16 @@ def status_lines(guild: discord.Guild, config: Dict[str, str]) -> List[str]:
             continue
         cp = ch.permissions_for(me)
         perms += [f"{st.CHANNEL_KEYS[key]}: {p}" for p in needed if not getattr(cp, p, False)]
+    active_logs = [k for k in st.LOG_KEYS if _channel(guild, config, k) is not None]
+    for key in active_logs:
+        cp = _channel(guild, config, key).permissions_for(me)
+        perms += [f"{st.LOG_KEYS[key]}: {p}" for p in LOG_PERMS if not getattr(cp, p, False)]
+    if active_logs and not gp.view_audit_log:
+        perms.append("Server: view_audit_log (wer etwas geändert hat)")
     if perms:
         lines.append(t("setup_perm", items=", ".join(perms)))
+    if message_content is False and _channel(guild, config, "log_msg") is not None:
+        lines.append(t("setup_msg_intent"))
     return lines
 
 
@@ -126,6 +136,27 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         labels = [f"{st.CHANNEL_KEYS[k]} = #{c.name}" for k, c in given.items() if c is not None]
         await self._save(interaction, values, labels)
 
+    @app_commands.command(name="logs", description="Kanäle der Server-Logs festlegen (ersetzt SCNX)")
+    @app_commands.describe(user="Beitritt, Austritt, Nickname, Rollen, Kick/Bann/Timeout", rollen="Rollen geändert",
+                           kanal="Kanäle geändert", msg="Bearbeitete und gelöschte Nachrichten",
+                           msg_tage="Wie lange der Bot Nachrichten für den msg-log im Arbeitsspeicher behält")
+    async def logs(self, interaction: discord.Interaction, user: Optional[discord.TextChannel] = None,
+                   rollen: Optional[discord.TextChannel] = None, kanal: Optional[discord.TextChannel] = None,
+                   msg: Optional[discord.TextChannel] = None,
+                   msg_tage: Optional[app_commands.Range[int, st.MSG_DAYS_MIN, st.MSG_DAYS_MAX]] = None):
+        given = {"log_user": user, "log_rollen": rollen, "log_kanal": kanal, "log_msg": msg}
+        values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
+        labels = [f"{st.LOG_KEYS[k]} = #{c.name}" for k, c in given.items() if c is not None]
+        if msg_tage is not None:
+            values[st.MSG_DAYS_KEY] = str(msg_tage)
+            labels.append(t("setup_msg_days", days=msg_tage))
+        await self._save(interaction, values, labels)
+
+    @app_commands.command(name="log_aus", description="Ein Server-Log abschalten")
+    @app_commands.choices(art=[app_commands.Choice(name=v, value=k) for k, v in st.LOG_KEYS.items()])
+    async def log_off(self, interaction: discord.Interaction, art: app_commands.Choice[str]):
+        await self._save(interaction, {st.channel_key(art.value): None}, [t("setup_log_off", log=art.name)])
+
     @app_commands.command(name="erinnerung", description="Wie viele Minuten vor einem Event erinnert wird")
     async def reminder(self, interaction: discord.Interaction,
                        minuten: app_commands.Range[int, st.REMINDER_MIN, st.REMINDER_MAX]):
@@ -143,9 +174,12 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         embed.add_field(name=t("setup_channels"), inline=False, value="\n".join(
             f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_unset')}"
             for key, label in st.CHANNEL_KEYS.items()))
+        embed.add_field(name=t("setup_logs"), inline=False, value="\n".join(
+            f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
+            for key, label in st.LOG_KEYS.items()) + "\n" + t("setup_msg_days", days=st.msg_days(config)))
         embed.add_field(name=t("setup_reminder_field"), inline=False,
                         value=t("setup_reminder_value", minutes=st.reminder_minutes(config)))
-        problems = status_lines(guild, config)
+        problems = status_lines(guild, config, self.bot.intents.message_content)
         embed.add_field(name=t("setup_checks"), inline=False, value="\n".join(problems) or t("setup_ok"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

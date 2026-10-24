@@ -9,6 +9,11 @@ Paket 1 (Grundgerüst): Container, SQLite, `/setup` (Rollen, Kanäle, Erinnerung
 Nachrichten), Buttons mit fester `custom_id`, die Neustarts überleben. Die Funktionen hinter den Buttons folgen in
 den nächsten Paketen.
 
+Paket 2/3: Eingangskontrolle mit stfc.pro-Abgleich, Status-Rollen (Kontextmenü „Status ändern“, `/status`).
+
+Server-Logs (ersetzen SCNX): user-, rollen-, kanal-, msg-log, je Kanal über `/setup logs`, abschalten mit
+`/setup log_aus`. Der msg-log merkt sich Nachrichten nur im Arbeitsspeicher (Standard 7 Tage, `msg_tage` 1–30).
+
 ## Aufbau
 
 | Pfad | Inhalt |
@@ -17,6 +22,8 @@ den nächsten Paketen.
 | `gfk/db.py` | SQLite (`/app/data/gfk.db`), Tabellen laut Design |
 | `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss, und Prüfungen (Hierarchie, Reihenfolge) |
 | `gfk/cogs/setup.py` | `/setup` |
+| `gfk/cogs/onboarding.py`, `roles.py` | Eingangskontrolle, Status-Rollen |
+| `gfk/cogs/logs.py`, `gfk/logfmt.py` | Server-Logs, Vergleiche und Nachrichten-Zwischenspeicher |
 | `gfk/views/panels.py` | feste Nachrichten mit Buttons |
 | `gfk/devtools.py` | nur Test-Server: Kanäle zuordnen, Rollen anlegen, Prüfung, Panels posten |
 | `gfk/texts.py` | Texte (Deutsch) |
@@ -33,5 +40,7 @@ den nächsten Paketen.
 
 Kanäle sehen, Nachrichten senden, Links einbetten, Dateien anhängen, Nachrichtenverlauf lesen, Nicknames verwalten,
 Rollen verwalten, Events erstellen und verwalten, öffentliche und private Threads erstellen, Threads verwalten, in
-Threads schreiben. **Kanäle verwalten nur auf der Event-Kategorie.** Intent: Server Members. Die Bot-Rolle muss über
-Führung, Mitglied, Freund und Gast stehen.
+Threads schreiben, Audit-Log anzeigen (wer etwas geändert hat). **Kanäle verwalten nur auf der Event-Kategorie.**
+Die Log-Kanäle muss der Bot sehen und beschreiben können. Intents: Server Members, Message Content (nur für den
+msg-log; ist er im Developer Portal aus, startet der Bot ohne ihn und `/setup anzeigen` weist darauf hin). Die
+Bot-Rolle muss über Führung, Mitglied, Freund und Gast stehen.
