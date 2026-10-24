@@ -200,3 +200,21 @@ class StatusChoiceTests(unittest.TestCase):
         self.assertEqual(names.choices({"mitglied"}, {"gast"}, "GFK"), [])
         self.assertEqual(names.choices({"admiral"}, {"admiral", "fuehrung"}, "GFK"), [])  # Admiral nie
         self.assertEqual(names.choices({"fuehrung"}, set(), None), ["gast", "freund"])
+
+
+class AllianceForStatusTests(unittest.TestCase):
+    """Mitglied/Führung zählt nur mit aktuellem [GFK] im Nickname UND stfc.pro-Verknüpfung."""
+    class M:
+        def __init__(self, uid, nick):
+            self.id, self.nick = uid, nick
+
+    def test_current_nick_and_link_required(self):
+        from gfk.cogs.onboarding import alliance_for_status
+        db.init()
+        db.save_member_sync(7, 1, "GFK", "McRunner", 11)          # verknüpft
+        db.save_member_sync(7, 2, "GFK", "Fake", None)            # GFK eingetragen, aber nicht verknüpft
+        self.assertEqual(run(alliance_for_status(7, self.M(1, "[GFK] McRunner"))), "GFK")
+        self.assertEqual(run(alliance_for_status(7, self.M(1, "McRunner"))), "")      # Kürzel entfernt
+        self.assertEqual(run(alliance_for_status(7, self.M(1, "[ABC] McRunner"))), "ABC")
+        self.assertEqual(run(alliance_for_status(7, self.M(2, "[GFK] Fake"))), "")    # ohne Verknüpfung
+        self.assertEqual(run(alliance_for_status(7, self.M(3, "[GFK] Hand"))), "")    # von Hand, nie eingetragen

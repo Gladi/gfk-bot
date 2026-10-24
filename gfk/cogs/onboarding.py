@@ -31,6 +31,16 @@ def status_of(member: discord.Member, config: Dict[str, str]) -> Set[str]:
     return {k for k in st.STATUS_ROLES if (v := config.get(st.role_key(k))) and int(v) in ids}
 
 
+async def alliance_for_status(guild_id: int, member: discord.Member) -> str:
+    """Kürzel, das für Mitglied/Führung zählt: "GFK" nur, wenn der AKTUELLE Nickname mit [GFK] beginnt UND die Person
+    über "Namen ändern" mit stfc.pro verknüpft ist - ein von Hand vorangestelltes [GFK] reicht nicht."""
+    tag = names.tag_of_nick(member.nick) or ""
+    if tag != stfc.ALLIANCE_TAG:
+        return tag
+    row = await db.get_member(guild_id, member.id)
+    return tag if row and row[2] is not None else ""
+
+
 async def _reply(interaction: discord.Interaction, text: str, view: Optional[discord.ui.View] = None):
     kwargs = {"ephemeral": True}
     if view is not None:
@@ -132,12 +142,10 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
         if not names.may_grant(status_of(interaction.user, config), self.role, current):
             await interaction.response.send_message(t("status_denied"), ephemeral=True)
             return
-        row = await db.get_member(guild.id, target.id)
-        alliance = row[0] if row else ""
+        alliance = await alliance_for_status(guild.id, target)
         if not names.allowed_for_alliance(self.role, alliance, stfc.ALLIANCE_TAG):
             await interaction.response.send_message(
-                t("status_gfk_only", target=target.mention, role=st.ROLE_KEYS[self.role],
-                  tag=f"[{alliance}]" if alliance else t("verw_no_ally")), ephemeral=True)
+                t("status_gfk_only", target=target.mention, role=st.ROLE_KEYS[self.role]), ephemeral=True)
             return
         label = st.ROLE_KEYS[self.role]
         if self.role in current and len(current) == 1:
@@ -252,10 +260,11 @@ class OnboardingCog(commands.Cog):
         config = await db.get_config(after.guild.id)
         status = status_of(after, config)
         tag = names.tag_of_nick(after.nick)
+        row = await db.get_member(after.guild.id, after.id)
+        if row and (row[0] or "") != (tag or ""):   # gespeichertes Kürzel immer dem Nickname angleichen
+            keep_id = row[2] if tag == stfc.ALLIANCE_TAG and row[0] == stfc.ALLIANCE_TAG else None
+            await db.save_member(after.guild.id, after.id, tag or "", row[1], keep_id)
         if names.loses_gfk_status(status, tag, stfc.ALLIANCE_TAG):
-            row = await db.get_member(after.guild.id, after.id)
-            if row:
-                await db.save_member(after.guild.id, after.id, tag or "", row[1], None)
             await self.demote(after.guild, config, after, status, after.display_name)
 
     @commands.Cog.listener()

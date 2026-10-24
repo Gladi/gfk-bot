@@ -10,7 +10,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from gfk import db, names, settings as st, stfc
-from gfk.cogs.onboarding import set_status, status_of
+from gfk.cogs.onboarding import alliance_for_status, set_status, status_of
 from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
 
@@ -32,9 +32,8 @@ class ChoiceView(discord.ui.View):
             guild = interaction.guild
             config = await db.get_config(guild.id)
             target = guild.get_member(self.target.id)
-            row = await db.get_member(guild.id, self.target.id)
             if target is None or role not in names.choices(status_of(interaction.user, config), status_of(target, config),
-                                                         row[0] if row else "", stfc.ALLIANCE_TAG):
+                                                         await alliance_for_status(guild.id, target), stfc.ALLIANCE_TAG):
                 await interaction.response.edit_message(content=t("status_stale"), view=None)
                 return
             await set_status(guild, config, target, role, interaction.user)
@@ -58,8 +57,7 @@ async def open_status_menu(interaction: discord.Interaction, target: discord.Mem
         await interaction.response.send_message(t("status_not_self"), ephemeral=True)
         return
     target_status = status_of(target, config)
-    row = await db.get_member(guild.id, target.id)
-    alliance = row[0] if row else (names.tag_of_nick(target.nick) or "")
+    alliance = await alliance_for_status(guild.id, target)
     options = names.choices(actor_status, target_status, alliance, stfc.ALLIANCE_TAG)
     current = ", ".join(st.ROLE_KEYS[s] for s in st.STATUS_ROLES if s in target_status) or t("status_none")
     if not options:

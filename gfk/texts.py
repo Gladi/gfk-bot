@@ -65,14 +65,14 @@ T = {
     "status_none": "kein Status",
     "status_menu": "Status von {target} (aktuell: **{current}**) ändern auf:",
     "status_no_options": "ℹ️ Für {target} (aktuell: **{current}**) kannst du nichts ändern. Mitglied und Führung gibt "
-                         "es nur mit dem Kürzel GFK, Führung vergibt nur der Admiral.",
+                         "es nur mit geprüftem GFK-Kürzel („Namen ändern“), Führung vergibt nur der Admiral.",
     "status_stale": "⚠️ Das geht inzwischen nicht mehr (Status oder Kürzel haben sich geändert). Bitte neu öffnen.",
     "name_demoted": "ℹ️ Ohne das Kürzel GFK bist du jetzt Gast - Mitglied und Führung gibt es nur für GFK.",
     "verw_demoted_title": "⬇️ GFK-Kürzel entfernt",
     "verw_demoted": "{user} heißt jetzt **{nick}** und ist deshalb wieder Gast (vorher: {old}). "
                     "Soll {user} Freund werden?",
-    "status_gfk_only": "🔒 {role} gibt es nur für GFK. {target} ist mit {tag} eingetragen - erst den Namen mit dem "
-                       "Kürzel GFK ändern lassen (Button „Namen ändern“).",
+    "status_gfk_only": "🔒 {role} gibt es nur für GFK. {target} hat kein (geprüftes) GFK-Kürzel - erst über den "
+                       "Button „Namen ändern“ mit Kürzel GFK eintragen lassen.",
     "status_done": "✅ {target} ist jetzt **{role}**.",
     "status_already": "ℹ️ {target} ist schon **{role}**.",
     "sync_renamed": "✏️ Abgleich mit stfc.pro: {user} heißt jetzt **{nick}** (vorher {old}).",
