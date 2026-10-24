@@ -115,6 +115,9 @@ class MemberDbTests(unittest.TestCase):
         self.assertEqual(db.get_member_sync(1, 2)[1], "McRunner2")
         db.delete_member_sync(1, 2)
         self.assertIsNone(db.get_member_sync(1, 2))
+        self.assertEqual(db.unlinked_gfk_members_sync(1), [])
+        db.save_member_sync(1, 4, "gfk", "Neuling2", None)
+        self.assertEqual(db.unlinked_gfk_members_sync(1), [(4, "Neuling2")])   # GFK ohne Spieler-ID
 
 
 if __name__ == "__main__":

@@ -89,6 +89,10 @@ class Roster:
         self._players: Optional[Dict[int, Player]] = None
         self._at = 0.0
 
+    def age(self) -> float:
+        """Sekunden seit dem letzten erfolgreichen Abruf (unendlich, wenn noch keiner)."""
+        return time.monotonic() - self._at if self._players is not None else float("inf")
+
     async def get(self, session: aiohttp.ClientSession, max_age: float = CACHE_SECONDS) -> Optional[Dict[int, Player]]:
         if self._players is not None and time.monotonic() - self._at < max_age:
             return self._players

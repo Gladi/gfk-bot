@@ -67,6 +67,9 @@ class NameModal(discord.ui.Modal, title=t("name_modal_title")):
             await self.cog.apply_name(interaction, tag, name, None, note=t("name_stfc_down"))
             return
         player = stfc.find(roster, name)
+        if player is None and self.cog.bot.roster.age() > 120:   # nicht gefunden: einmal frisch nachladen
+            roster = await self.cog.bot.roster.get(self.cog.bot.web, max_age=0) or roster
+            player = stfc.find(roster, name)
         if player is not None:
             await self.cog.apply_name(interaction, tag, player.name, player)
             return
@@ -278,11 +281,18 @@ class OnboardingCog(commands.Cog):
 
     async def sync_guild(self, guild: discord.Guild):
         rows = await db.linked_members(guild.id)
-        if not rows:
+        unlinked = await db.unlinked_gfk_members(guild.id, stfc.ALLIANCE_TAG)
+        if not rows and not unlinked:
             return
         roster = await self.bot.roster.get(self.bot.web, max_age=3600)
         if roster is None:
             return
+        for user_id, game_name in unlinked:   # inzwischen auf stfc.pro aufgetaucht? -> nachträglich verknüpfen
+            member, player = guild.get_member(user_id), stfc.find(roster, game_name)
+            if member is not None and player is not None:
+                await db.save_member(guild.id, user_id, stfc.ALLIANCE_TAG, player.name, player.player_id)
+                await notify_verwaltung(guild, t("sync_linked", user=member.mention, name=player.name,
+                                                 rank=player.rank or "?"))
         for user_id, alliance, game_name, player_id in rows:
             member = guild.get_member(user_id)
             if member is None:

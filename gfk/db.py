@@ -125,6 +125,13 @@ def linked_members_sync(guild_id: int):
                             "WHERE guild_id = ? AND stfc_player_id IS NOT NULL", (guild_id,)).fetchall()
 
 
+def unlinked_gfk_members_sync(guild_id: int, tag: str = "GFK"):
+    """(user_id, game_name) von Mitgliedern mit GFK-Kürzel, die noch keiner Spieler-ID zugeordnet sind."""
+    with _conn() as conn:
+        return conn.execute("SELECT user_id, game_name FROM members WHERE guild_id = ? AND upper(alliance) = ? "
+                            "AND stfc_player_id IS NULL", (guild_id, tag)).fetchall()
+
+
 def delete_member_sync(guild_id: int, user_id: int):
     with _conn() as conn:
         conn.execute("DELETE FROM members WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
@@ -140,4 +147,5 @@ save_member = _async(save_member_sync)
 get_member = _async(get_member_sync)
 linked_members = _async(linked_members_sync)
 delete_member = _async(delete_member_sync)
+unlinked_gfk_members = _async(unlinked_gfk_members_sync)
 log_role_change = _async(log_role_change_sync)
