@@ -3,8 +3,9 @@ GFK-Bot - Mitgliederliste der Allianz von stfc.pro (nur lesen, normale Seite, ni
 
 Die Seite https://stfc.pro/alliances/<id> enthält die vollständige Mitgliederliste im eingebetteten Next.js-Payload
 (self.__next_f.push). Abgerufen wird höchstens alle CACHE_SECONDS einmal (Zwischenspeicher im Arbeitsspeicher), mit
-eigenem User-Agent und kurzem Timeout. Gespeichert wird nichts davon außer Spieler-ID und Name von Mitgliedern, die
-sich bei der Eingangskontrolle selbst zugeordnet haben (Tabelle members).
+eigenem User-Agent und kurzem Timeout. Jeder erfolgreiche Abruf wird gespeichert (nur der aktuelle Stand: Spieler-ID,
+Name, Kürzel, Rang - kein Verlauf); ist stfc.pro nicht erreichbar, gilt der gespeicherte Stand, solange er höchstens
+STORED_MAX_AGE alt ist.
 """
 import difflib
 import json
@@ -24,6 +25,8 @@ ALLIANCE_TAG = "GFK"
 URL = "https://stfc.pro/alliances/{id}"
 USER_AGENT = "GFK-Bot (Discord bot of the GFK alliance; contact via stfc.pro alliance GFK)"
 CACHE_SECONDS = 15 * 60
+STORED_MAX_AGE = 30 * 86400          # älter als 30 Tage -> gespeicherte Liste nicht mehr verwenden
+RETRY_AFTER_FAILURE = 120            # nach einem Fehlschlag so lange direkt die gespeicherte Liste nehmen
 _PUSH_RE = re.compile(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', re.S)
 
 
@@ -84,31 +87,59 @@ def suggestions(players: Dict[int, Player], name: str, limit: int = 5, cutoff: f
 class Roster:
     """Zwischengespeicherte Mitgliederliste; get() liefert None, wenn stfc.pro nicht erreichbar ist."""
 
-    def __init__(self, alliance_id: int = ALLIANCE_ID):
+    def __init__(self, alliance_id: int = ALLIANCE_ID, store=None):
+        """store = (save(players, fetched_at), load() -> (players, fetched_at)) als async-Funktionen, z. B. aus gfk.db."""
         self.alliance_id = alliance_id
+        self.store = store
         self._players: Optional[Dict[int, Player]] = None
         self._at = 0.0
+        self.from_store = False          # True = aktuelle Liste stammt aus der Datenbank (stfc.pro nicht erreichbar)
+        self._failed_at = -1e9           # letzter fehlgeschlagener Abruf (dann 2 Minuten lang nicht erneut versuchen)
 
     def age(self) -> float:
         """Sekunden seit dem letzten erfolgreichen Abruf (unendlich, wenn noch keiner)."""
         return time.monotonic() - self._at if self._players is not None else float("inf")
 
     async def get(self, session: aiohttp.ClientSession, max_age: float = CACHE_SECONDS) -> Optional[Dict[int, Player]]:
-        if self._players is not None and time.monotonic() - self._at < max_age:
+        if self._players is not None and not self.from_store and time.monotonic() - self._at < max_age:
             return self._players
+        if time.monotonic() - self._failed_at < RETRY_AFTER_FAILURE:
+            return await self._fallback()
+        players = await self._fetch(session)
+        if players:
+            self._players, self._at, self.from_store = players, time.monotonic(), False
+            if self.store:
+                await self.store[0]([(p.player_id, p.name, p.tag, p.rank) for p in players.values()], time.time())
+            return players
+        self._failed_at = time.monotonic()
+        return await self._fallback()
+
+    async def _fetch(self, session: aiohttp.ClientSession) -> Optional[Dict[int, Player]]:
         try:
             async with session.get(URL.format(id=self.alliance_id), headers={"User-Agent": USER_AGENT},
                                    timeout=aiohttp.ClientTimeout(total=20)) as resp:
                 if resp.status != 200:
                     log.warning("stfc.pro antwortet mit HTTP %s", resp.status)
-                    return self._players
+                    return None
                 html = await resp.text()
         except (aiohttp.ClientError, TimeoutError) as exc:
             log.warning("stfc.pro nicht erreichbar: %s", type(exc).__name__)
-            return self._players
+            return None
         players = parse_roster(html)
         if not players:
             log.warning("stfc.pro: keine Mitglieder im Seiteninhalt gefunden (Format geändert?)")
+        return players or None
+
+    async def _fallback(self) -> Optional[Dict[int, Player]]:
+        """stfc.pro nicht erreichbar: letzte Liste aus dem Speicher bzw. der Datenbank (höchstens STORED_MAX_AGE alt)."""
+        if self._players is not None and not self.from_store:
             return self._players
-        self._players, self._at = players, time.monotonic()
-        return players
+        if not self.store:
+            return None
+        rows, fetched_at = await self.store[1]()
+        if not rows or fetched_at is None or time.time() - fetched_at > STORED_MAX_AGE:
+            return None
+        log.info("stfc.pro nicht erreichbar - gespeicherte Liste vom Abruf vor %.1f h", (time.time() - fetched_at) / 3600)
+        self._players = {r[0]: Player(*r) for r in rows}
+        self.from_store = True
+        return self._players

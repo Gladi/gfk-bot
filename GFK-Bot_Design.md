@@ -81,9 +81,11 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
    das Kürzel).
    - **GFK-Mitglieder:** Der Bot gleicht den Spielernamen mit der Mitgliederliste auf
      https://stfc.pro/alliances/1913611545 ab (ähnliche Namen zur Auswahl; **ohne Treffer kein GFK-Name** - der Name
-     muss genau so auf stfc.pro stehen, auch wenn stfc.pro gerade nicht erreichbar ist) und merkt sich die feste
+     muss genau so auf stfc.pro stehen) und merkt sich die feste
      Spieler-ID. Ändert sich dort der Spielername (oder das Kürzel), passt der Bot den Nickname automatisch an
      (Abgleich 1x täglich, eine Seite pro Abruf).
+   - Jeder erfolgreiche Abruf der Liste wird gespeichert (nur aktueller Stand: Spieler-ID, Name, Kürzel, Rang - kein
+     Verlauf). Ist stfc.pro nicht erreichbar, gilt die gespeicherte Liste, solange sie höchstens 30 Tage alt ist.
    - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
 5. Nach der Umbenennung gibt der Bot automatisch „Gast“.
 6. Die Führung erhält eine Benachrichtigung in **Verwaltung** mit Buttons „Freund“, „Mitglied“, „Führung“

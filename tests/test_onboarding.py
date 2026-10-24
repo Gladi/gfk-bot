@@ -122,3 +122,70 @@ class MemberDbTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _Resp:
+    def __init__(self, status, text):
+        self.status, self._text = status, text
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def text(self):
+        return self._text
+
+
+class _Session:
+    """Attrappe für aiohttp.ClientSession: liefert nacheinander die vorgegebenen Antworten (Exception = Ausfall)."""
+    def __init__(self, *answers):
+        self.answers, self.calls = list(answers), 0
+
+    def get(self, *args, **kwargs):
+        self.calls += 1
+        answer = self.answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return _Resp(*answer)
+
+
+class StoredRosterTests(unittest.TestCase):
+    def setUp(self):
+        db.init()
+        db.save_roster_sync([], 0)
+
+    def roster(self):
+        return stfc.Roster(store=(db.save_roster, db.load_roster))
+
+    def test_successful_fetch_is_stored_and_used_when_site_is_down(self):
+        import aiohttp
+        r = self.roster()
+        players = run(r.get(_Session((200, page(PLAYERS)))))
+        self.assertEqual(sorted(players), [11, 22, 33])
+        self.assertEqual(len(db.load_roster_sync()[0]), 3)
+        down = self.roster()                                   # neuer Start, stfc.pro nicht erreichbar
+        got = run(down.get(_Session(aiohttp.ClientError("down"))))
+        self.assertEqual(sorted(got), [11, 22, 33])
+        self.assertTrue(down.from_store)
+        session = _Session()
+        self.assertEqual(sorted(run(down.get(session))), [11, 22, 33])   # 2 Minuten kein neuer Versuch
+        self.assertEqual(session.calls, 0)
+
+    def test_changed_format_does_not_overwrite_stored_list(self):
+        r = self.roster()
+        run(r.get(_Session((200, page(PLAYERS)))))
+        again = self.roster()
+        self.assertEqual(sorted(run(again.get(_Session((200, "<html>neues Format</html>"))))), [11, 22, 33])
+        self.assertEqual(len(db.load_roster_sync()[0]), 3)
+
+    def test_too_old_stored_list_is_not_used(self):
+        import time
+        db.save_roster_sync([(11, "McRunner", "GFK", "Admiral")], time.time() - stfc.STORED_MAX_AGE - 60)
+        self.assertIsNone(run(self.roster().get(_Session((503, "")))))
+
+
+def run(coro):
+    import asyncio
+    return asyncio.run(coro)

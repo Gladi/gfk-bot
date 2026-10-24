@@ -67,7 +67,7 @@ class NameModal(discord.ui.Modal, title=t("name_modal_title")):
             await _reply(interaction, t("name_stfc_down"))
             return
         player = stfc.find(roster, name)
-        if player is None and self.cog.bot.roster.age() > 120:   # nicht gefunden: einmal frisch nachladen
+        if player is None and (self.cog.bot.roster.age() > 120 or self.cog.bot.roster.from_store):   # frisch nachladen
             roster = await self.cog.bot.roster.get(self.cog.bot.web, max_age=0) or roster
             player = stfc.find(roster, name)
         if player is not None:
@@ -312,5 +312,5 @@ async def setup(bot: commands.Bot):
     if not hasattr(bot, "web"):
         bot.web = aiohttp.ClientSession()
     if not hasattr(bot, "roster"):
-        bot.roster = stfc.Roster()
+        bot.roster = stfc.Roster(store=(db.save_roster, db.load_roster))   # letzte Liste übersteht Ausfälle
     await bot.add_cog(OnboardingCog(bot))

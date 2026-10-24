@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS role_log (
     guild_id INTEGER NOT NULL, actor_id INTEGER NOT NULL, target_id INTEGER NOT NULL,
     old_role TEXT, new_role TEXT, at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS stfc_roster (
+    player_id INTEGER PRIMARY KEY, name TEXT NOT NULL, tag TEXT NOT NULL, rank TEXT NOT NULL,
+    fetched_at REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS members (
     guild_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
     alliance TEXT NOT NULL, game_name TEXT NOT NULL, stfc_player_id INTEGER, nick_synced_at TEXT,
@@ -132,6 +136,22 @@ def unlinked_gfk_members_sync(guild_id: int, tag: str = "GFK"):
                             "AND stfc_player_id IS NULL", (guild_id, tag)).fetchall()
 
 
+# ----------------- letzte Mitgliederliste von stfc.pro (nur aktueller Stand, kein Verlauf) -----------------
+def save_roster_sync(players, fetched_at: float):
+    """players: Iterable von (player_id, name, tag, rank). Ersetzt den gespeicherten Stand komplett."""
+    with _conn() as conn:
+        conn.execute("DELETE FROM stfc_roster")
+        conn.executemany("INSERT INTO stfc_roster (player_id, name, tag, rank, fetched_at) VALUES (?, ?, ?, ?, ?)",
+                         [(*p, fetched_at) for p in players])
+
+
+def load_roster_sync():
+    """(Liste von (player_id, name, tag, rank), Zeitpunkt des Abrufs als Unix-Zeit) - leer: ([], None)."""
+    with _conn() as conn:
+        rows = conn.execute("SELECT player_id, name, tag, rank, fetched_at FROM stfc_roster").fetchall()
+    return ([r[:4] for r in rows], rows[0][4]) if rows else ([], None)
+
+
 def delete_member_sync(guild_id: int, user_id: int):
     with _conn() as conn:
         conn.execute("DELETE FROM members WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
@@ -148,4 +168,6 @@ get_member = _async(get_member_sync)
 linked_members = _async(linked_members_sync)
 delete_member = _async(delete_member_sync)
 unlinked_gfk_members = _async(unlinked_gfk_members_sync)
+save_roster = _async(save_roster_sync)
+load_roster = _async(load_roster_sync)
 log_role_change = _async(log_role_change_sync)
