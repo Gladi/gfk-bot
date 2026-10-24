@@ -77,7 +77,13 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 1. Neue Nutzer erhalten automatisch die Rolle „Neuling“ und sehen nur den Eingangskanal.
 2. Dort steht eine feste Nachricht mit Button „Namen ändern“.
 3. Modal: Allianz und In-Game-Name (beide Pflicht).
-4. Bot setzt den Server-Nickname im Format `[Allianz] Name` (maximal 32 Zeichen, sonst kürzen und Hinweis).
+4. Bot setzt den Server-Nickname im Format `[ALLY] Name` (maximal 32 Zeichen; zu lang -> der Name wird gekürzt, nie
+   das Kürzel).
+   - **GFK-Mitglieder:** Der Bot gleicht den Spielernamen mit der Mitgliederliste auf
+     https://stfc.pro/alliances/1913611545 ab (ähnliche Namen werden vorgeschlagen) und merkt sich die feste
+     Spieler-ID. Ändert sich dort der Spielername (oder das Kürzel), passt der Bot den Nickname automatisch an
+     (Abgleich 1x täglich, eine Seite pro Abruf).
+   - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
 5. Nach der Umbenennung entfernt der Bot „Neuling“ und gibt automatisch „Gast“.
 6. Die Führung erhält eine Benachrichtigung (Führungs- oder Log-Kanal) mit Buttons „Freund“, „Mitglied“, „Führung“;
    alternativ später per `/status`.
@@ -89,6 +95,14 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 
 Im Eventkanal (nur allianzintern sichtbar) steht eine feste Nachricht mit Button „Neues Event planen“, nutzbar nur für
 Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wahl: allianzweit oder privat.
+
+### Aufbau des Eventkanals
+
+- Ganz oben steht immer die feste Nachricht (Embed) „Neues Event planen“, darunter alle aktuellen Events. Beendete
+  Events räumt der Bot weg (Karte, Thread, Sprachkanal), damit nur Aktuelles im Kanal steht.
+- Für jedes Event gibt es eine **Event-Karte** (Embed) im Eventkanal und dazu einen **Thread** für die Absprache.
+- Muss die Planungs-Nachricht neu gepostet werden (`/setup panels`), postet der Bot die aktuellen Event-Karten in
+  der richtigen Reihenfolge darunter neu.
 
 ### Sprachkanal je Event
 
@@ -113,15 +127,21 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 
 - Bot legt ein Discord Scheduled Event im Event-Sprachkanal an
 - Bot postet eine Event-Karte (Embed) im Eventkanal: Kategorie, Zeit als Discord-Timestamp, Beschreibung, Ersteller, Teilnehmerliste
-- Buttons: „Anmelden“, „Abmelden“, optional „Vielleicht“
+- Buttons: „Ich nehme teil“ und „Abmelden“ (optional „Vielleicht“)
 - Teilnehmer werden in SQLite gespeichert, die Karte wird bei jeder Änderung aktualisiert
-- Ersteller und Führung können über einen Button „Absagen“ das Event löschen (Discord-Event wird mitgelöscht)
+- Bearbeiten und Absagen: **Ersteller und Führung** (der Admiral zählt zur Führung); das Discord-Event wird mit
+  geändert bzw. gelöscht
 
 ### Privates Event
 
 - Zusätzlich User-Select (bis 25 Mitglieder) zur Auswahl der Teilnehmer
 - Siehe „Sprachkanal je Event“: kein öffentliches Discord-Event; privater Sprachkanal 1 Stunde vorher
-- Event-Karte im privaten Thread, in den der Bot die gewählten Teilnehmer einlädt (zusagen/absagen)
+- Die Event-Karte steht trotzdem im Eventkanal (für alle Mitglieder sichtbar), dazu ein privater Thread mit den
+  eingeladenen Teilnehmern
+- Nicht eingeladene Mitglieder sehen auf der Karte den Button **„Ich möchte mitmachen / Habt ihr noch Platz?“** -
+  der Ersteller bekommt die Anfrage (im privaten Thread) mit „Annehmen“ / „Ablehnen“; angenommen = Einladung in
+  den Thread und Freigabe des Sprachkanals
+- Bearbeiten und Absagen: **nur der Ersteller**; nach Event-Ende räumt der Bot automatisch auf
 
 ### Erinnerungen
 
@@ -135,7 +155,8 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 - `config(guild_id, key, value)`
 - `reports(id, guild_id, thread_id, reporter_id, category, alliance, player, description, created_at, status, closed_by, closed_at)`
 - `events(id, guild_id, type, category, start_at, end_at, description, creator_id, message_id, thread_id, discord_event_id, status, reminded)`
-- `event_participants(event_id, user_id, state)`
+- `event_participants(event_id, user_id, state)` (state: dabei, abgemeldet, angefragt)
+- `members(guild_id, user_id, alliance, game_name, stfc_player_id, nick_synced_at)` - nur für GFK-Mitglieder mit Spieler-ID
 - `role_log(id, guild_id, actor_id, target_id, old_role, new_role, at)`
 
 ## 8. Projektstruktur
@@ -163,8 +184,8 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 - ~~Führung ernennen~~ entschieden: nur der Admiral
 - ~~Events~~ entschieden: nur Mitglied, Führung, Admiral
 - ~~Meldungen durch Gäste/Freunde~~ entschieden: nicht über den Bot, sie melden von Hand in ihrem eigenen Forum
-- Private Events: Vorschlag privater Thread + privater Sprachkanal 1 Stunde vorher, kein öffentliches Discord-Event (Sichtbarkeit auf dem Test-Server prüfen)
+- ~~Private Events~~ entschieden (2026-10-24): Karte im Eventkanal + privater Thread + Anfrage-Button für Nicht-Eingeladene, kein öffentliches Discord-Event
 - ~~Rollenverwaltung~~ entschieden: freie Auswahl unter den Status-Rollen
-- Wer darf Events absagen oder bearbeiten? (Vorschlag: Ersteller, Führung, Admiral)
+- ~~Events bearbeiten~~ entschieden: allianzweit Ersteller + Führung (Admiral zählt dazu), privat nur Ersteller; Aufräumen automatisch nach Ende
 - ~~Event-Sprachkanal~~ entschieden: 1 Stunde vorher anlegen, löschen wenn Event vorbei und Kanal leer
-- Nickname-Format für die Eingangskontrolle (Vorschlag: `[ALLY] Name`, bei mehr als 32 Zeichen wird der Name gekürzt)
+- ~~Nickname~~ entschieden: `[ALLY] Name`; GFK-Mitglieder mit stfc.pro abgeglichen und automatisch nachgezogen
