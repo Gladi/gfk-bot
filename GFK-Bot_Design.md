@@ -47,7 +47,8 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 - Prüfung: Aufrufer hat die nötige Rolle, nur die Status-Rollen sind vergebbar, niemand kann sich selbst ändern
 - Der Bot entfernt die bisherige Status-Rolle und setzt die neue
 - Die Bot-Rolle muss in der Hierarchie über allen vergebbaren Rollen stehen
-- Log: jede Änderung als kurze Nachricht in einen optionalen Log-Kanal (wer, wem, alt → neu)
+- Log: jede Änderung als kurze Nachricht in Verwaltung (wer, wem, neu); mit dem Log-Paket zusätzlich im user-log
+- Umgesetzt (Paket 3, 2026-10-24): Kontextmenü „Status ändern“ und `/status @person`, niemand ändert sich selbst
 
 ## 4. Modul Meldungen (ROE und Vorfälle)
 

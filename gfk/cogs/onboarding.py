@@ -126,6 +126,9 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
             await interaction.response.send_message(t("status_gone"), ephemeral=True)
             return
         current = status_of(target, config)
+        if target.id == interaction.user.id:
+            await interaction.response.send_message(t("status_not_self"), ephemeral=True)
+            return
         if not names.may_grant(status_of(interaction.user, config), self.role, current):
             await interaction.response.send_message(t("status_denied"), ephemeral=True)
             return

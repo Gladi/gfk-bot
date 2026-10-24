@@ -189,3 +189,14 @@ class StoredRosterTests(unittest.TestCase):
 def run(coro):
     import asyncio
     return asyncio.run(coro)
+
+
+class StatusChoiceTests(unittest.TestCase):
+    def test_choices_per_actor(self):
+        self.assertEqual(names.choices({"fuehrung"}, {"gast"}, "GFK"), ["freund", "mitglied"])
+        self.assertEqual(names.choices({"admiral"}, {"mitglied"}, "GFK"), ["gast", "freund", "fuehrung"])
+        self.assertEqual(names.choices({"fuehrung"}, {"gast"}, "ABC"), ["freund"])        # ohne GFK nur Freund
+        self.assertEqual(names.choices({"fuehrung"}, {"fuehrung"}, "GFK"), [])           # Führung ändert nur der Admiral
+        self.assertEqual(names.choices({"mitglied"}, {"gast"}, "GFK"), [])
+        self.assertEqual(names.choices({"admiral"}, {"admiral", "fuehrung"}, "GFK"), [])  # Admiral nie
+        self.assertEqual(names.choices({"fuehrung"}, set(), None), ["gast", "freund"])

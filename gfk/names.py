@@ -80,3 +80,18 @@ def status_change(current: Iterable[str], target: str, all_status: List[str]) ->
     remove = [s for s in all_status if s in current and s != target and s != "admiral"]
     add = [] if target in current else [target]
     return remove, add
+
+
+STATUS_ORDER = ["gast", "freund", "mitglied", "fuehrung"]
+
+
+def choices(actor_status: Set[str], target_status: Set[str], alliance: Optional[str], gfk_tag: str = "GFK") -> List[str]:
+    """Status, die der Handelnde der Person geben darf (ohne den, den sie schon allein hat)."""
+    out = []
+    for target in STATUS_ORDER:
+        if not may_grant(actor_status, target, target_status) or not allowed_for_alliance(target, alliance, gfk_tag):
+            continue
+        if target_status - {"admiral"} == {target}:
+            continue
+        out.append(target)
+    return out

@@ -61,6 +61,12 @@ T = {
     "verw_status_set": "➡️ {target} ist jetzt **{role}** (durch {actor})",
     "status_denied": "🔒 Das darfst du nicht. Freund und Mitglied vergibt die Führung, Führung nur der Admiral.",
     "status_gone": "⚠️ Die Person ist nicht mehr auf dem Server.",
+    "status_not_self": "🔒 Deinen eigenen Status und den von Bots kannst du hier nicht ändern.",
+    "status_none": "kein Status",
+    "status_menu": "Status von {target} (aktuell: **{current}**) ändern auf:",
+    "status_no_options": "ℹ️ Für {target} (aktuell: **{current}**) kannst du nichts ändern. Mitglied und Führung gibt "
+                         "es nur mit dem Kürzel GFK, Führung vergibt nur der Admiral.",
+    "status_stale": "⚠️ Das geht inzwischen nicht mehr (Status oder Kürzel haben sich geändert). Bitte neu öffnen.",
     "name_demoted": "ℹ️ Ohne das Kürzel GFK bist du jetzt Gast - Mitglied und Führung gibt es nur für GFK.",
     "verw_demoted_title": "⬇️ GFK-Kürzel entfernt",
     "verw_demoted": "{user} heißt jetzt **{nick}** und ist deshalb wieder Gast (vorher: {old}). "
