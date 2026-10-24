@@ -22,9 +22,8 @@ CATEGORY = "gfk-bot"
 CHANNEL_NAMES = {"lobby": "eingang", "event": "events", "report": "meldungen", "reports": "vorfallforum",
                  "reportsforum": "vorfallforum"}
 LOG_NAME = "gfk-log"
-ROLE_ORDER = ["Admiral", "Führung", "Mitglied", "Freund", "Gast", "Neuling", "Diplomat"]
-ROLE_TO_KEY = {"Admiral": "admiral", "Führung": "fuehrung", "Mitglied": "mitglied", "Freund": "freund", "Gast": "gast",
-               "Neuling": "neuling", "Diplomat": "diplomat"}
+ROLE_ORDER = ["Admiral", "Führung", "Mitglied", "Freund", "Gast"]
+ROLE_TO_KEY = {"Admiral": "admiral", "Führung": "fuehrung", "Mitglied": "mitglied", "Freund": "freund", "Gast": "gast"}
 
 
 def _norm(name: str) -> str:
@@ -49,7 +48,7 @@ async def seed(guild: discord.Guild):
     for name in ROLE_ORDER:
         role = existing.get(name) or await guild.create_role(name=name, reason="GFK-Test: Status-Rolle")
         values[st.role_key(ROLE_TO_KEY[name])] = str(role.id)
-    # Reihenfolge direkt unter der höchsten Rolle des Bots: Admiral oben, Neuling unten, Diplomat darunter
+    # Reihenfolge direkt unter der höchsten Rolle des Bots: Admiral oben, Gast unten
     top = guild.me.top_role.position
     positions = {guild.get_role(int(values[st.role_key(ROLE_TO_KEY[n])])): top - 1 - i for i, n in enumerate(ROLE_ORDER)}
     await guild.edit_role_positions(positions={r: max(1, p) for r, p in positions.items()}, reason="GFK-Test")

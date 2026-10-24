@@ -6,11 +6,11 @@ Die Werte setzen Server-Admins mit /setup; gespeichert werden IDs in der Tabelle
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional
 
-# Status-Rollen von oben nach unten (Hierarchie im Discord: Owner -> Bots -> Admiral -> Führung -> ... -> Neuling)
-STATUS_ROLES = ["admiral", "fuehrung", "mitglied", "freund", "gast", "neuling"]
+# Status-Rollen von oben nach unten (Hierarchie im Discord: Owner -> Bots -> Admiral -> Führung -> ... -> Gast).
+# Neue Nutzer haben keine Rolle; bei neuen Vorfällen wird die Führung markiert.
+STATUS_ROLES = ["admiral", "fuehrung", "mitglied", "freund", "gast"]
 ROLE_KEYS = {
     "admiral": "Admiral", "fuehrung": "Führung", "mitglied": "Mitglied", "freund": "Freund", "gast": "Gast",
-    "neuling": "Neuling", "diplomat": "Diplomat",
 }
 CHANNEL_KEYS = {
     "eingang": "Eingangskanal", "meldungen": "Meldungskanal", "vorfallforum": "Vorfallforum", "events": "Eventkanal",
@@ -19,7 +19,7 @@ CHANNEL_KEYS = {
 REMINDER_KEY = "erinnerung_minuten"
 REMINDER_DEFAULT, REMINDER_MIN, REMINDER_MAX = 30, 5, 240
 # Rollen, die der Bot selbst vergibt - die Bot-Rolle muss über all diesen stehen
-MANAGED_ROLES = ["fuehrung", "mitglied", "freund", "gast", "neuling"]
+MANAGED_ROLES = ["fuehrung", "mitglied", "freund", "gast"]
 
 
 def role_key(name: str) -> str:

@@ -34,4 +34,4 @@ den nächsten Paketen.
 Kanäle sehen, Nachrichten senden, Links einbetten, Dateien anhängen, Nachrichtenverlauf lesen, Nicknames verwalten,
 Rollen verwalten, Events erstellen und verwalten, öffentliche und private Threads erstellen, Threads verwalten, in
 Threads schreiben. **Kanäle verwalten nur auf der Event-Kategorie.** Intent: Server Members. Die Bot-Rolle muss über
-Führung, Mitglied, Freund, Gast und Neuling stehen.
+Führung, Mitglied, Freund und Gast stehen.

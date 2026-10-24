@@ -1,7 +1,7 @@
 # GFK-Bot – Design-Dokument
 
 Zweiter Discord-Bot neben YATB, für die private Community eines Spiels. Ziel: Verwaltung vereinfachen.
-Der Bot ist nur allianzintern nutzbar (Mitglied, Führung, Admiral). Einzige Ausnahme ist die Eingangskontrolle für Neulinge. Umsetzung mit Claude Code in VS Code (Remote-SSH auf dem Oracle-Server).
+Der Bot ist nur allianzintern nutzbar (Mitglied, Führung, Admiral). Einzige Ausnahme ist die Eingangskontrolle für neue Nutzer. Umsetzung mit Claude Code in VS Code (Remote-SSH auf dem Oracle-Server).
 
 ## 1. Rahmen und Technik
 
@@ -14,16 +14,16 @@ Der Bot ist nur allianzintern nutzbar (Mitglied, Führung, Admiral). Einzige Aus
 - Intents: Guilds, Members (privilegiert, für Teilnehmerauswahl und Umbenennung)
 - Bot-Rechte: Rollen verwalten, Nicknames verwalten, Events verwalten, Threads/Forenbeiträge erstellen und verwalten, Nachrichten senden, Dateien anhängen,
   Kanäle verwalten (nur auf der Event-Kategorie, für die Event-Sprachkanäle)
-- Rollen-Hierarchie (von oben): Owner → Bots → Admiral → Führung → Mitglied → Freund → Gast → Neuling.
+- Rollen-Hierarchie (von oben): Owner → Bots → Admiral → Führung → Mitglied → Freund → Gast. Neue Nutzer haben
+  keine Rolle (`@everyone` sieht nur den Eingangskanal).
   Die Bot-Rolle steht über allen Rollen, die sie vergibt.
 
 ## 2. Konfiguration (/setup, nur Server-Admins)
 
 - Admiral-Rolle und Führungsrolle
-- Status-Rollen: „Neuling“ (isoliert, beim Beitritt), „Gast“ (nach der Namensänderung), „Freund“, „Mitglied“ und
+- Status-Rollen: „Gast“ (nach der Namensänderung), „Freund“, „Mitglied“ und
   „Führung“ (vergibt die Führung, siehe Abschnitt 3)
 - Kanäle: Meldungskanal, Vorfallforum, Eingangskanal, Eventkanal (nur allianzintern sichtbar), Event-Kategorie für die Sprachkanäle
-- Diplomaten-Rolle (wird bei neuen Meldungen erwähnt)
 - Erinnerungsvorlauf für Events (Standard 30 Minuten)
 - `/setup panels` postet die Button-Nachrichten in die Kanäle neu
 
@@ -68,13 +68,13 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
    - Startnachricht: Embed mit Melder, Kategorie, Allianz, Spieler, Datum, Beschreibung; Screenshots als Anhänge
    - Button „Erledigt“ unter der Startnachricht
    - Forum-Tags: Kategorie und Status (Offen/Erledigt)
-   - Erwähnung der Diplomaten-Rolle
+   - Erwähnung der Rolle Führung
 5. Führung und Mitglieder können im Beitrag antworten.
 6. „Erledigt“: nur Führungsrolle; setzt Tag „Erledigt“, vermerkt wer und wann, deaktiviert den Button, archiviert den Beitrag (optional sperren). Andere erhalten eine ephemere Ablehnung.
 
 ## 5. Modul Eingangskontrolle
 
-1. Neue Nutzer erhalten automatisch die Rolle „Neuling“ und sehen nur den Eingangskanal.
+1. Neue Nutzer haben keine Rolle und sehen nur den Eingangskanal (Kanalrechte für `@everyone`, kein Zutun des Bots).
 2. Dort steht eine feste Nachricht mit Button „Namen ändern“.
 3. Modal: Allianz und In-Game-Name (beide Pflicht).
 4. Bot setzt den Server-Nickname im Format `[ALLY] Name` (maximal 32 Zeichen; zu lang -> der Name wird gekürzt, nie
@@ -84,7 +84,7 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
      Spieler-ID. Ändert sich dort der Spielername (oder das Kürzel), passt der Bot den Nickname automatisch an
      (Abgleich 1x täglich, eine Seite pro Abruf).
    - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
-5. Nach der Umbenennung entfernt der Bot „Neuling“ und gibt automatisch „Gast“.
+5. Nach der Umbenennung gibt der Bot automatisch „Gast“.
 6. Die Führung erhält eine Benachrichtigung (Führungs- oder Log-Kanal) mit Buttons „Freund“, „Mitglied“, „Führung“;
    alternativ später per `/status`.
 7. Hinweis: Den Nickname des Server-Eigentümers und von Personen mit Rollen über der Bot-Rolle kann der Bot nicht ändern.
@@ -180,6 +180,7 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 
 ## 10. Offene Entscheidungen
 
+- ~~Neuling-/Diplomaten-Rolle~~ entfallen (2026-10-24): neue Nutzer ohne Rolle, bei Vorfällen wird die Führung markiert
 - ~~Eingangskontrolle~~ entschieden (2026-10-22): nach der Namensänderung automatisch Gast; Führung macht zu Freund oder Mitglied, der Admiral auch zur Führung
 - ~~Führung ernennen~~ entschieden: nur der Admiral
 - ~~Events~~ entschieden: nur Mitglied, Führung, Admiral

@@ -31,7 +31,7 @@ COGS = ["gfk.cogs.setup"]
 class GfkBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
-        intents.members = True              # Beitritte (Neuling-Rolle), Nicknames, Teilnehmer-Auswahl
+        intents.members = True              # Rollen, Nicknames, Teilnehmer-Auswahl
         super().__init__(command_prefix=commands.when_mentioned, intents=intents,
                          allowed_mentions=discord.AllowedMentions.none())
         self._last_connected = time.monotonic()

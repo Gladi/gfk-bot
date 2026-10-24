@@ -51,7 +51,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(st.unmanageable(11, roles), [])
 
     def test_role_order(self):
-        good = {"admiral": 9, "fuehrung": 8, "mitglied": 7, "freund": 6, "gast": 5, "neuling": 4}
+        good = {"admiral": 9, "fuehrung": 8, "mitglied": 7, "freund": 6, "gast": 5}
         self.assertEqual(st.order_problems(good), [])
         self.assertEqual(st.order_problems({**good, "gast": 7}), ["Freund sollte über Gast stehen"])
         self.assertEqual(st.order_problems({"admiral": 9, "gast": 5}), [])   # fehlende Rollen stören nicht

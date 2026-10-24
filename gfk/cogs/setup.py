@@ -102,14 +102,12 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         await interaction.response.send_message(t("setup_saved", items=items), ephemeral=True)
         await send_log(interaction.guild, t("log_setup", user=interaction.user.mention, items=items))
 
-    @app_commands.command(name="rollen", description="Status-Rollen und Diplomaten-Rolle festlegen")
+    @app_commands.command(name="rollen", description="Status-Rollen festlegen")
     @app_commands.rename(fuehrung="führung")
     async def roles(self, interaction: discord.Interaction, admiral: Optional[discord.Role] = None,
                     fuehrung: Optional[discord.Role] = None, mitglied: Optional[discord.Role] = None,
-                    freund: Optional[discord.Role] = None, gast: Optional[discord.Role] = None,
-                    neuling: Optional[discord.Role] = None, diplomat: Optional[discord.Role] = None):
-        given = {"admiral": admiral, "fuehrung": fuehrung, "mitglied": mitglied, "freund": freund, "gast": gast,
-                 "neuling": neuling, "diplomat": diplomat}
+                    freund: Optional[discord.Role] = None, gast: Optional[discord.Role] = None):
+        given = {"admiral": admiral, "fuehrung": fuehrung, "mitglied": mitglied, "freund": freund, "gast": gast}
         values = {st.role_key(k): str(r.id) for k, r in given.items() if r is not None}
         labels = [f"{st.ROLE_KEYS[k]} = {r.name}" for k, r in given.items() if r is not None]
         await self._save(interaction, values, labels)
