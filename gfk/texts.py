@@ -59,6 +59,10 @@ T = {
     "verw_status_set": "➡️ {target} ist jetzt **{role}** (durch {actor})",
     "status_denied": "🔒 Das darfst du nicht. Freund und Mitglied vergibt die Führung, Führung nur der Admiral.",
     "status_gone": "⚠️ Die Person ist nicht mehr auf dem Server.",
+    "name_demoted": "ℹ️ Ohne das Kürzel GFK bist du jetzt Gast - Mitglied und Führung gibt es nur für GFK.",
+    "verw_demoted_title": "⬇️ GFK-Kürzel entfernt",
+    "verw_demoted": "{user} heißt jetzt **{nick}** und ist deshalb wieder Gast (vorher: {old}). "
+                    "Soll {user} Freund werden?",
     "status_gfk_only": "🔒 {role} gibt es nur für GFK. {target} ist mit {tag} eingetragen - erst den Namen mit dem "
                        "Kürzel GFK ändern lassen (Button „Namen ändern“).",
     "status_done": "✅ {target} ist jetzt **{role}**.",

@@ -180,6 +180,13 @@ async def set_status(guild: discord.Guild, config: Dict[str, str], member: disco
 class OnboardingCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self._own_renames: Set[tuple] = set()   # Nickname-Änderungen des Bots selbst (on_member_update ignoriert sie)
+
+    async def _set_nick(self, member: discord.Member, nick: str, reason: str):
+        key = (member.guild.id, member.id)
+        self._own_renames.add(key)
+        asyncio.get_running_loop().call_later(15, self._own_renames.discard, key)
+        await member.edit(nick=nick, reason=reason)
 
     async def cog_load(self):
         panels.HANDLERS["lobby"] = self.open_form
@@ -201,13 +208,17 @@ class OnboardingCog(commands.Cog):
         lines = [t("name_done", nick=nick)]
         try:
             if member.display_name != nick:
-                await member.edit(nick=nick, reason="GFK-Bot: Eingangskontrolle")
+                await self._set_nick(member, nick, "GFK-Bot: Eingangskontrolle")
         except discord.Forbidden:
             lines = [t("name_no_nick_perm", nick=nick)]
-        first_time = not status_of(member, config)
+        status = status_of(member, config)
+        first_time = not status
         if first_time and config.get(st.role_key("gast")):
             await set_status(guild, config, member, "gast", self.bot.user)
             lines.append(t("name_done_guest"))
+        elif names.loses_gfk_status(status, tag, stfc.ALLIANCE_TAG):
+            await self.demote(guild, config, member, status, nick)
+            lines.append(t("name_demoted"))
         await db.save_member(guild.id, member.id, tag or "", name, player.player_id if player else None)
         if note:
             lines.append(note)
@@ -221,6 +232,31 @@ class OnboardingCog(commands.Cog):
             elif not tag:
                 embed.add_field(name=t("verw_alliance"), value=t("verw_no_ally"))
             await notify_verwaltung(guild, embed=embed, view=status_view(member.id, tag))
+
+    async def demote(self, guild: discord.Guild, config: Dict[str, str], member: discord.Member, status: Set[str],
+                     nick: str):
+        """GFK-Kürzel weg -> Gast; die Führung kann in Verwaltung mit einem Klick Freund daraus machen."""
+        if not config.get(st.role_key("gast")):
+            return
+        old = ", ".join(st.ROLE_KEYS[s] for s in st.STATUS_ROLES if s in status)
+        await set_status(guild, config, member, "gast", self.bot.user)
+        embed = discord.Embed(title=t("verw_demoted_title"), color=discord.Color.orange(),
+                              description=t("verw_demoted", user=member.mention, nick=nick, old=old))
+        await notify_verwaltung(guild, embed=embed, view=status_view(member.id, names.tag_of_nick(nick)))
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        """Nickname direkt in Discord geändert: ohne [GFK] verliert Mitglied/Führung den Status."""
+        if before.nick == after.nick or after.bot or (after.guild.id, after.id) in self._own_renames:
+            return
+        config = await db.get_config(after.guild.id)
+        status = status_of(after, config)
+        tag = names.tag_of_nick(after.nick)
+        if names.loses_gfk_status(status, tag, stfc.ALLIANCE_TAG):
+            row = await db.get_member(after.guild.id, after.id)
+            if row:
+                await db.save_member(after.guild.id, after.id, tag or "", row[1], None)
+            await self.demote(after.guild, config, after, status, after.display_name)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
@@ -261,7 +297,7 @@ class OnboardingCog(commands.Cog):
                 continue
             nick = names.nickname(alliance or stfc.ALLIANCE_TAG, player.name)
             try:
-                await member.edit(nick=nick, reason="GFK-Bot: Name auf stfc.pro geändert")
+                await self._set_nick(member, nick, "GFK-Bot: Name auf stfc.pro geändert")
             except discord.Forbidden:
                 log.info("Nickname von %s nicht änderbar", user_id)
             await db.save_member(guild.id, user_id, alliance, player.name, player_id)

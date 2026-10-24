@@ -86,7 +86,9 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
    - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
 5. Nach der Umbenennung gibt der Bot automatisch „Gast“.
 6. Die Führung erhält eine Benachrichtigung in **Verwaltung** mit Buttons „Freund“, „Mitglied“, „Führung“
-   (Führung nur durch den Admiral);
+   (Führung nur durch den Admiral); Mitglied und Führung nur mit dem Kürzel GFK - ohne GFK nur der Button „Freund“.
+   Verliert jemand das Kürzel GFK (über „Namen ändern“ oder direkt am Nickname), wird er automatisch Gast (der Admiral
+   nie); die Führung bekommt in Verwaltung eine Nachricht mit dem Button „Freund“;
    alternativ später per `/status`.
 7. Hinweis: Den Nickname des Server-Eigentümers und von Personen mit Rollen über der Bot-Rolle kann der Bot nicht ändern.
 

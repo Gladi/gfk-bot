@@ -62,6 +62,19 @@ class StatusRightsTests(unittest.TestCase):
         self.assertTrue(names.allowed_for_alliance("freund", "ABC"))
         self.assertTrue(names.allowed_for_alliance("gast", None))
 
+    def test_losing_the_gfk_tag(self):
+        self.assertEqual(names.tag_of_nick("[GFK] McRunner"), "GFK")
+        self.assertEqual(names.tag_of_nick("[gfk]McRunner"), "GFK")
+        self.assertIsNone(names.tag_of_nick("McRunner"))
+        self.assertIsNone(names.tag_of_nick(None))
+        self.assertEqual(names.tag_of_nick("[ABC] Tom"), "ABC")
+        self.assertTrue(names.loses_gfk_status({"mitglied"}, None))
+        self.assertTrue(names.loses_gfk_status({"fuehrung"}, "ABC"))
+        self.assertFalse(names.loses_gfk_status({"mitglied"}, "GFK"))
+        self.assertFalse(names.loses_gfk_status({"admiral", "fuehrung"}, None))   # Admiral nie automatisch
+        self.assertFalse(names.loses_gfk_status({"freund"}, None))
+        self.assertFalse(names.loses_gfk_status({"gast"}, "ABC"))
+
     def test_status_change_keeps_exactly_one(self):
         self.assertEqual(names.status_change({"gast"}, "mitglied", st.STATUS_ROLES), (["gast"], ["mitglied"]))
         self.assertEqual(names.status_change(set(), "gast", st.STATUS_ROLES), ([], ["gast"]))

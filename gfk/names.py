@@ -40,6 +40,20 @@ def allowed_for_alliance(target: str, alliance: Optional[str], gfk_tag: str = "G
     return target not in GFK_ONLY or (alliance or "").upper() == gfk_tag
 
 
+NICK_TAG_RE = re.compile(r"^\[([A-Za-z0-9]{1,6})\]\s*")
+
+
+def tag_of_nick(nick: Optional[str]) -> Optional[str]:
+    """Kürzel aus einem Nickname wie "[GFK] Name" (groß geschrieben) oder None."""
+    m = NICK_TAG_RE.match(nick or "")
+    return m.group(1).upper() if m else None
+
+
+def loses_gfk_status(status: Set[str], tag: Optional[str], gfk_tag: str = "GFK") -> bool:
+    """Mitglied oder Führung ohne GFK-Kürzel -> zurück zu Gast (der Admiral wird nie automatisch geändert)."""
+    return bool(status & GFK_ONLY) and "admiral" not in status and (tag or "").upper() != gfk_tag
+
+
 GRANTABLE_BY_FUEHRUNG = ["gast", "freund", "mitglied"]
 GRANTABLE_BY_ADMIRAL = ["gast", "freund", "mitglied", "fuehrung"]
 
