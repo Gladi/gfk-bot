@@ -63,8 +63,8 @@ class NameModal(discord.ui.Modal, title=t("name_modal_title")):
             await self.cog.apply_name(interaction, tag, name, None)
             return
         roster = await self.cog.bot.roster.get(self.cog.bot.web)
-        if roster is None:
-            await self.cog.apply_name(interaction, tag, name, None, note=t("name_stfc_down"))
+        if roster is None:   # ohne Prüfung kein GFK-Name - sonst ließe sich der Abgleich umgehen
+            await _reply(interaction, t("name_stfc_down"))
             return
         player = stfc.find(roster, name)
         if player is None and self.cog.bot.roster.age() > 120:   # nicht gefunden: einmal frisch nachladen
@@ -74,25 +74,24 @@ class NameModal(discord.ui.Modal, title=t("name_modal_title")):
             await self.cog.apply_name(interaction, tag, player.name, player)
             return
         hints = stfc.suggestions(roster, name)
-        text = t("name_not_found", name=name) if hints else t("name_not_found_none", name=name)
-        await _reply(interaction, text, view=MatchView(self.cog, interaction.user.id, tag, name, hints))
+        if not hints:   # GFK nur mit einem Namen aus der stfc.pro-Liste
+            await _reply(interaction, t("name_not_found_none", name=name))
+            return
+        await _reply(interaction, t("name_not_found", name=name),
+                     view=MatchView(self.cog, interaction.user.id, tag, name, hints))
 
 
 class MatchView(discord.ui.View):
-    """Vorschläge aus der stfc.pro-Liste oder den eingegebenen Namen trotzdem übernehmen."""
+    """Auswahl aus den ähnlichen Namen der stfc.pro-Liste (GFK: nur Namen aus der Liste, kein freies Übernehmen)."""
 
     def __init__(self, cog, user_id: int, tag: str, name: str, hints):
         super().__init__(timeout=300)
         self.cog, self.user_id, self.tag, self.name = cog, user_id, tag, name
         self.hints = {str(p.player_id): p for p in hints}
-        if hints:
-            select = discord.ui.Select(placeholder=t("name_select_placeholder"), options=[
-                discord.SelectOption(label=p.name, value=str(p.player_id), description=p.rank or None) for p in hints])
-            select.callback = self.on_select
-            self.add_item(select)
-        keep = discord.ui.Button(label=t("name_keep"), style=discord.ButtonStyle.secondary)
-        keep.callback = self.on_keep
-        self.add_item(keep)
+        select = discord.ui.Select(placeholder=t("name_select_placeholder"), options=[
+            discord.SelectOption(label=p.name, value=str(p.player_id), description=p.rank or None) for p in hints])
+        select.callback = self.on_select
+        self.add_item(select)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return interaction.user.id == self.user_id
@@ -101,11 +100,6 @@ class MatchView(discord.ui.View):
         player = self.hints[interaction.data["values"][0]]
         await interaction.response.edit_message(view=None)
         await self.cog.apply_name(interaction, self.tag, player.name, player)
-        self.stop()
-
-    async def on_keep(self, interaction: discord.Interaction):
-        await interaction.response.edit_message(view=None)
-        await self.cog.apply_name(interaction, self.tag, self.name, None)
         self.stop()
 
 

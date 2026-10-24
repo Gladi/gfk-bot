@@ -44,11 +44,14 @@ T = {
     "name_done_guest": "Willkommen! Die Führung schaut sich deinen Eintrag gleich an.",
     "name_no_nick_perm": "⚠️ Deinen Nickname kann der Bot nicht ändern (Server-Owner oder Rolle über dem Bot). "
                          "Bitte stelle ihn selbst auf **{nick}**.",
-    "name_not_found": "🔎 **{name}** steht (noch) nicht in der GFK-Mitgliederliste auf stfc.pro. Meintest du einen dieser "
-                      "Namen? Sonst übernimm deinen Namen - der Bot verknüpft dich, sobald stfc.pro dich führt.",
+    "name_not_found": "🔎 **{name}** steht nicht genau so in der GFK-Mitgliederliste auf stfc.pro. Wähle deinen Namen "
+                      "aus der Liste - sonst prüfe die Schreibweise (genau wie im Spiel).",
+    "name_not_found_none": "🔎 **{name}** steht nicht in der GFK-Mitgliederliste auf stfc.pro. Bitte schreibe deinen Namen "
+                           "genau wie im Spiel. Gerade erst GFK beigetreten? stfc.pro aktualisiert nur alle paar "
+                           "Stunden - versuche es später noch einmal.",
+    "name_stfc_down": "⚠️ stfc.pro ist gerade nicht erreichbar, deshalb kann dein GFK-Name nicht geprüft werden. Bitte "
+                      "versuche es in ein paar Minuten noch einmal.",
     "name_select_placeholder": "Spielname auswählen",
-    "name_keep": "So übernehmen",
-    "name_stfc_down": "(stfc.pro war gerade nicht erreichbar - der Name wurde ohne Abgleich übernommen.)",
     "verw_new_guest_title": "🆕 Neuer Gast",
     "verw_new_guest": "{user} heißt jetzt **{nick}**.",
     "verw_stfc_ok": "✅ In der GFK-Liste gefunden ({rank})",
@@ -69,9 +72,6 @@ T = {
     "sync_renamed": "✏️ Abgleich mit stfc.pro: {user} heißt jetzt **{nick}** (vorher {old}).",
     "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste.",
     "sync_linked": "🔗 Abgleich mit stfc.pro: {user} steht jetzt in der GFK-Liste ({name}, {rank}) und ist verknüpft.",
-    "name_not_found_none": "🔎 **{name}** steht (noch) nicht in der GFK-Mitgliederliste auf stfc.pro - die Seite "
-                           "aktualisiert nur alle paar Stunden. Prüfe die Schreibweise oder übernimm den Namen; der Bot "
-                           "verknüpft dich automatisch, sobald du dort auftauchst.",
 }
 
 

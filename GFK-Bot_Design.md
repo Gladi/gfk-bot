@@ -80,7 +80,8 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 4. Bot setzt den Server-Nickname im Format `[ALLY] Name` (maximal 32 Zeichen; zu lang -> der Name wird gekürzt, nie
    das Kürzel).
    - **GFK-Mitglieder:** Der Bot gleicht den Spielernamen mit der Mitgliederliste auf
-     https://stfc.pro/alliances/1913611545 ab (ähnliche Namen werden vorgeschlagen) und merkt sich die feste
+     https://stfc.pro/alliances/1913611545 ab (ähnliche Namen zur Auswahl; **ohne Treffer kein GFK-Name** - der Name
+     muss genau so auf stfc.pro stehen, auch wenn stfc.pro gerade nicht erreichbar ist) und merkt sich die feste
      Spieler-ID. Ändert sich dort der Spielername (oder das Kürzel), passt der Bot den Nickname automatisch an
      (Abgleich 1x täglich, eine Seite pro Abruf).
    - **Alle anderen:** nur `[ALLY] Name` wie eingegeben, kein Abgleich.
