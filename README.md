@@ -1,0 +1,37 @@
+# GFK-Bot (privat)
+
+Discord-Bot für die GFK-Allianz in Star Trek Fleet Command: Eingangskontrolle, Status-Rollen, Vorfallmeldungen und
+Eventplanung. Nur allianzintern. Umfang und Entscheidungen: [GFK-Bot_Design.md](GFK-Bot_Design.md).
+
+## Stand
+
+Paket 1 (Grundgerüst): Container, SQLite, `/setup` (Rollen, Kanäle, Erinnerung, Anzeige mit Prüfung, feste
+Nachrichten), Buttons mit fester `custom_id`, die Neustarts überleben. Die Funktionen hinter den Buttons folgen in
+den nächsten Paketen.
+
+## Aufbau
+
+| Pfad | Inhalt |
+|---|---|
+| `gfk/main.py` | Start, Lebenszeichen (Docker-Healthcheck), Fehlerbehandlung, Anmeldung der Befehle |
+| `gfk/db.py` | SQLite (`/app/data/gfk.db`), Tabellen laut Design |
+| `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss, und Prüfungen (Hierarchie, Reihenfolge) |
+| `gfk/cogs/setup.py` | `/setup` |
+| `gfk/views/panels.py` | feste Nachrichten mit Buttons |
+| `gfk/devtools.py` | nur Test-Server: Kanäle zuordnen, Rollen anlegen, Prüfung, Panels posten |
+| `gfk/texts.py` | Texte (Deutsch) |
+
+## Betrieb (auf dem Oracle-Server, Ordner `~/discord-bot`)
+
+- Test-Bot: `docker compose --profile test up -d --build gfk-bot-test` (Token in `.env.gfk-test`, DB `data/gfk-test/`,
+  Befehle sofort auf dem Test-Server über `GFK_DEV_GUILD`)
+- Test-Server einrichten: `docker compose --profile test run --rm gfk-bot-test python -m gfk.devtools seed|panels|status`
+- Unit-Tests: `docker run --rm --network none -v $PWD/gfk-bot:/src:ro -w /src <image> python -m unittest discover -s tests`
+- Der Live-Dienst `gfk-bot` (`.env.gfk`, `data/gfk/`) kommt zum Live-Gang dazu.
+
+## Rechte des Bots
+
+Kanäle sehen, Nachrichten senden, Links einbetten, Dateien anhängen, Nachrichtenverlauf lesen, Nicknames verwalten,
+Rollen verwalten, Events erstellen und verwalten, öffentliche und private Threads erstellen, Threads verwalten, in
+Threads schreiben. **Kanäle verwalten nur auf der Event-Kategorie.** Intent: Server Members. Die Bot-Rolle muss über
+Führung, Mitglied, Freund, Gast und Neuling stehen.
