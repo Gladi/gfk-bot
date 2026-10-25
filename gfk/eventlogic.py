@@ -142,20 +142,26 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
 
 
-def voice_name(category: str, start: dt.datetime) -> str:
-    return _clip(f"🔊 {label(category)} {local(start):%d.%m. %H:%M}", 100)
+def clean_title(raw: str) -> str:
+    return " ".join((raw or "").split())
 
 
-def thread_name(category: str, start: dt.datetime, description: Optional[str]) -> str:
-    base = f"{emoji(category)} {label(category)} {local(start):%d.%m. %H:%M}"
-    first = " ".join((description or "").split())
-    return _clip(f"{base} – {first}" if first else base, 100)
+def voice_name(title: str) -> str:
+    return _clip(f"🔊 {title}", 100)
 
 
-def event_name(category: str, description: Optional[str]) -> str:
+def thread_name(category: str, title: str) -> str:
+    return _clip(f"{emoji(category)} {title}", 100)
+
+
+def event_name(title: str) -> str:
     """Name des Discord-Events."""
-    first = " ".join((description or "").split())
-    return _clip(f"{label(category)}: {first}" if first else label(category), 100)
+    return _clip(title, 100)
+
+
+def title_of(ev: dict) -> str:
+    """Titel eines Events (ältere Einträge ohne Titel: Beschreibung bzw. Art)."""
+    return ev.get("title") or clean_title(ev.get("description") or "")[:80] or label(ev.get("category") or "sonstiges")
 
 
 def iso(ts: dt.datetime) -> str:

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guild_id INTEGER NOT NULL, type TEXT NOT NULL, category TEXT NOT NULL,
-    start_at TEXT NOT NULL, end_at TEXT NOT NULL, description TEXT, creator_id INTEGER NOT NULL,
+    start_at TEXT NOT NULL, end_at TEXT NOT NULL, description TEXT, creator_id INTEGER NOT NULL, title TEXT,
     message_id INTEGER, thread_id INTEGER, voice_channel_id INTEGER, discord_event_id INTEGER,
     status TEXT NOT NULL DEFAULT 'planned', reminded INTEGER NOT NULL DEFAULT 0
 );
@@ -83,6 +83,10 @@ def init():
     with _conn() as conn:
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.executescript(SCHEMA)
+        # Nachträglich hinzugekommene Spalten (ältere Datenbanken)
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(events)")}
+        if "title" not in columns:
+            conn.execute("ALTER TABLE events ADD COLUMN title TEXT")
 
 
 # ----------------- Konfiguration (pro Server, Schlüssel -> Wert) -----------------
@@ -220,16 +224,16 @@ delete_report = _async(delete_report_sync)
 
 
 # ----------------- Events -----------------
-EVENT_FIELDS = {"category", "start_at", "end_at", "description", "message_id", "thread_id", "voice_channel_id",
+EVENT_FIELDS = {"title", "category", "start_at", "end_at", "description", "message_id", "thread_id", "voice_channel_id",
                 "discord_event_id", "status", "reminded"}
 
 
-def create_event_sync(guild_id: int, kind: str, category: str, start_at: str, end_at: str, description: str,
-                      creator_id: int, reminded: int) -> int:
+def create_event_sync(guild_id: int, kind: str, title: str, category: str, start_at: str, end_at: str,
+                      description: str, creator_id: int, reminded: int) -> int:
     with _conn() as conn:
-        cur = conn.execute("INSERT INTO events (guild_id, type, category, start_at, end_at, description, creator_id, "
-                           "reminded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                           (guild_id, kind, category, start_at, end_at, description, creator_id, reminded))
+        cur = conn.execute("INSERT INTO events (guild_id, type, title, category, start_at, end_at, description, "
+                           "creator_id, reminded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (guild_id, kind, title, category, start_at, end_at, description, creator_id, reminded))
         return cur.lastrowid
 
 

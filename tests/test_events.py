@@ -99,13 +99,16 @@ class DueTests(unittest.TestCase):
 class NameTests(unittest.TestCase):
     def test_names(self):
         start = berlin(2026, 10, 25, 20, 0)
-        self.assertEqual(el.voice_name("armada", start), "🔊 Armada 25.10. 20:00")
-        self.assertEqual(el.thread_name("welle", start, "  Hostiles  im Süden "), "🌊 Welle 25.10. 20:00 – Hostiles im Süden")
-        self.assertLessEqual(len(el.thread_name("welle", start, "x" * 300)), 100)
+        self.assertEqual(el.voice_name("Borg-Armada"), "🔊 Borg-Armada")
+        self.assertEqual(el.thread_name("welle", el.clean_title("  Hostiles  im Süden ")), "🌊 Hostiles im Süden")
+        self.assertLessEqual(len(el.thread_name("welle", "x" * 300)), 100)
+        self.assertEqual(el.title_of({"title": "Borg", "category": "armada"}), "Borg")
+        self.assertEqual(el.title_of({"title": None, "description": "alt", "category": "armada"}), "alt")
+        self.assertEqual(el.title_of({"title": None, "description": "", "category": "armada"}), "Armada")
         self.assertEqual(el.short_time(start), "So 25.10. 20:00")
         self.assertEqual(el.input_value(start), "25.10.2026 20:00")
         self.assertEqual(el.from_iso(el.iso(start)), start)
-        self.assertEqual(el.event_name("sonstiges", ""), "Sonstiges")
+        self.assertEqual(el.event_name("Borg-Armada"), "Borg-Armada")
 
     def test_mention_chunks(self):
         chunks = list(el.mention_chunks(range(10 ** 17, 10 ** 17 + 200), prefix="Hallo\n"))
@@ -153,7 +156,8 @@ class ModalTests(unittest.TestCase):
                 self.assertEqual(len(payload["components"]), count)
             payload = events.EventModal(None, _Guild(), "alliance", {"category": "welle", "when": "25.10. 20:00"},
                                         event_id=1).to_dict()
-            select = payload["components"][0]["component"]
+            self.assertEqual(payload["components"][0]["component"]["type"], 4)    # Titel zuerst
+            select = payload["components"][1]["component"]
             self.assertEqual([o["value"] for o in select["options"] if o.get("default")], ["welle"])
         asyncio.run(go())
 
@@ -167,7 +171,9 @@ class EventDbTests(unittest.TestCase):
         db.init()
 
     def test_event_roundtrip(self):
-        eid = db.create_event_sync(7, "alliance", "armada", el.iso(NOW), el.iso(NOW + dt.timedelta(hours=1)), "x", 1, 0)
+        eid = db.create_event_sync(7, "alliance", "Titel", "armada", el.iso(NOW), el.iso(NOW + dt.timedelta(hours=1)),
+                                   "", 1, 0)
+        self.assertEqual(db.get_event_sync(eid)["title"], "Titel")
         db.set_participant_sync(eid, 1, "dabei")
         db.set_participant_sync(eid, 2, "vielleicht")
         db.set_participant_sync(eid, 1, "abgemeldet")
@@ -183,7 +189,7 @@ class EventDbTests(unittest.TestCase):
             db.update_event_sync(eid, creator_id=3)
 
     def test_card_buttons(self):
-        ev = {"id": 3, "type": "alliance", "category": "armada", "start_at": el.iso(NOW),
+        ev = {"id": 3, "type": "alliance", "title": "Borg", "category": "armada", "start_at": el.iso(NOW),
               "end_at": el.iso(NOW + dt.timedelta(minutes=90)), "description": "Test", "creator_id": 1,
               "status": "planned", "voice_channel_id": None, "thread_id": 9}
 
@@ -191,7 +197,8 @@ class EventDbTests(unittest.TestCase):
             embed, view = events.card(ev, {1: "dabei", 2: "vielleicht", 4: "abgemeldet"})
             self.assertEqual([c.custom_id for c in view.children],
                              [f"gfk:ev:{a}:3" for a in ("join", "maybe", "leave", "edit", "cancel")])
-            self.assertIn("(1)", embed.fields[3].name)
+            self.assertIn("(1)", embed.fields[4].name)
+            self.assertEqual(embed.title, "⚔️ Borg")
             embed, view = events.card({**ev, "type": "private"}, {1: "dabei"})
             self.assertEqual([c.custom_id for c in view.children], [f"gfk:ev:{a}:3" for a in ("ask", "edit", "cancel")])
             _, view = events.card({**ev, "status": "cancelled"}, {})

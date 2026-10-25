@@ -133,7 +133,8 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 
 - Kategorie: Armadas, Welle, Ansturm, Sonstiges
 - Datum und Uhrzeit: Discord hat keinen Datumspicker im Modal; Eingabe als Textfeld im Format `TT.MM.JJJJ HH:MM`, Zeitzone Europe/Berlin, Validierung (muss in der Zukunft liegen). Alternative: Selects für Tag (nächste 14 Tage) und Uhrzeit (Viertelstunden).
-- Beschreibung (kurz)
+- Titel (Pflicht) - Name von Karte, Thread, Sprachkanal und Discord-Event (eine Beschreibung gibt es nicht,
+  entschieden 2026-10-25)
 - Optional: Dauer (Standard 1 Stunde), da Discord-Events eine Endzeit brauchen
 
 ### Allianzweites Event
@@ -168,14 +169,17 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 - Zeit als Textfeld, deutsche Zeit: `25.10. 20:00`, `25.10.2026 20:00`, `morgen 20:00`, `20:00` (heute bzw. morgen);
   Dauer `1`, `1,5`, `90min`, `1:30` (15 min bis 24 h, leer = 1 h). Bei Fehlern öffnet „Nochmal öffnen“ das Formular
   mit den bisherigen Eingaben.
-- Private Events: Teilnehmer per Auswahl direkt im Formular; nur GFK-Mitglieder werden eingeladen.
+- Private Events: Teilnehmer per Auswahl direkt im Formular; nur GFK-Mitglieder werden eingeladen. Der Button
+  „Ich möchte mitmachen“ ist für alle sichtbar (Discord zeigt allen dieselben Buttons); klickt der Ersteller, kommt ein
+  Hinweis.
+- Formular: Titel, Art, Wann, Dauer (+ Teilnehmer bei privat) - mehr als 5 Felder erlaubt Discord nicht.
 - **Erinnerungen und Start-Hinweis kommen in den Thread des Events** (auch allianzweit), damit im Eventkanal nur die
   Planungs-Nachricht und die Karten stehen; Erwähnt werden „dabei“ und (allianzweit) „vielleicht“.
 - Abgesagte Events: Sprachkanal und Discord-Event sofort weg, die Karte bleibt als „Abgesagt“ bis zum geplanten Ende,
   dann räumt der Bot Karte und Thread weg (wie bei beendeten Events, sobald der Sprachkanal leer ist).
 - Discord-Event: allianzweit sofort als „extern“, 1 h vorher auf den Sprachkanal umgestellt, beim Start gestartet,
   am Ende beendet (auf dem Test-Server geprüft). Privat: 1 h vorher ein Discord-Event im privaten Sprachkanal - ob
-  es wirklich nur Teilnehmer sehen, muss ein Konto ohne Admin-Rechte prüfen (Admins sehen alles).
+  es nur Teilnehmer sehen: am 2026-10-25 mit einem Konto ohne Admin-Rechte bestätigt.
 - Selbsttest ohne Klicks: `python -m gfk.devtools selftest` (Test-Bot vorher stoppen).
 
 ## 6b. Modul Server-Logs (ersetzt den SCNX-Bot)

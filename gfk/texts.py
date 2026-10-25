@@ -39,11 +39,12 @@ T = {
     "ev_modal_alliance": "Allianzweites Event", "ev_modal_private": "Privates Event",
     "ev_modal_edit": "Event bearbeiten",
     "ev_f_category": "Art", "ev_cat_placeholder": "Armada, Welle, Ansturm oder Sonstiges",
+    "ev_f_title": "Titel", "ev_title_placeholder": "z. B. Borg-Armada", "ev_title_hint": "Name für Karte, Thread und "
+                                                                                          "Sprachkanal",
     "ev_f_when_input": "Wann?", "ev_when_placeholder": "z. B. 25.10. 20:00",
     "ev_when_hint": "TT.MM. HH:MM oder TT.MM.JJJJ HH:MM, auch „morgen 20:00“ - deutsche Zeit",
     "ev_f_duration_input": "Dauer", "ev_duration_placeholder": "1",
     "ev_duration_hint": "In Stunden (1, 1,5, 2) oder Minuten (90min) - leer = 1 Stunde",
-    "ev_f_description": "Beschreibung", "ev_desc_placeholder": "Was ist geplant? Ziel, Treffpunkt, Schiffe …",
     "ev_f_people": "Wer ist dabei?", "ev_people_placeholder": "Mitglieder auswählen",
     "ev_people_hint": "Bis zu 25 GFK-Mitglieder; du bist automatisch dabei",
     "ev_bad_format": "⚠️ Die Zeit habe ich nicht verstanden. Bitte so: `25.10. 20:00` oder `25.10.2026 20:00`.",
@@ -51,6 +52,10 @@ T = {
     "ev_bad_far": "⚠️ Höchstens ein Jahr im Voraus.",
     "ev_bad_duration": "⚠️ Die Dauer habe ich nicht verstanden (15 Minuten bis 24 Stunden), z. B. `1`, `1,5` oder "
                        "`90min`.",
+    "ev_bad_title": "⚠️ Bitte gib dem Event einen Titel.",
+    "ev_f_kind": "Art",
+    "ev_ask_creator": "ℹ️ Das ist dein Event - der Button ist für die anderen Mitglieder (Discord zeigt allen "
+                      "dieselben Buttons). Du kannst es über „Bearbeiten“ und „Absagen“ verwalten.",
     "ev_created": "✅ Event angelegt: {link}",
     "ev_saved": "✅ Änderungen gespeichert.",
     "ev_skipped": "ℹ️ Nicht eingeladen (keine GFK-Mitglieder): {users}",

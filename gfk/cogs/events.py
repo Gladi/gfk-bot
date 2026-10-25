@@ -90,14 +90,14 @@ class RequestButton(discord.ui.DynamicItem[discord.ui.Button],
 def card(ev: dict, parts: Dict[int, str]) -> Tuple[discord.Embed, Optional[discord.ui.View]]:
     start, end = el.from_iso(ev["start_at"]), el.from_iso(ev["end_at"])
     private, status = ev["type"] == "private", ev["status"]
-    title = f"{el.emoji(ev['category'])} {el.label(ev['category'])}" + (f" · 🔒 {t('ev_private')}" if private else "")
+    title = f"{el.emoji(ev['category'])} {el.title_of(ev)}" + (f" · 🔒 {t('ev_private')}" if private else "")
     color = discord.Color.dark_purple() if private else discord.Color.green()
     if status == "cancelled":
         title, color = f"❌ {t('ev_cancelled')}: {title}", discord.Color.dark_grey()
     elif status in ("ended", "done"):
         title, color = f"✔️ {t('ev_ended')}: {title}", discord.Color.light_grey()
-    e = discord.Embed(title=title, description=logfmt.clip(ev["description"], 2000) if ev["description"] else None,
-                      color=color)
+    e = discord.Embed(title=title, color=color)
+    e.add_field(name=t("ev_f_kind"), value=f"{el.emoji(ev['category'])} {el.label(ev['category'])}")
     e.add_field(name=t("ev_f_when"), value=f"{_ts(start)}\n{_ts(start, 'R')}")
     e.add_field(name=t("ev_f_duration"), value=el.duration_text(int((end - start).total_seconds() // 60)))
     e.add_field(name=t("ev_f_creator"), value=f"<@{ev['creator_id']}>")
@@ -132,16 +132,17 @@ class EventModal(discord.ui.Modal):
         self.category = discord.ui.Select(placeholder=t("ev_cat_placeholder"), options=[
             discord.SelectOption(label=lbl, value=key, emoji=emo, default=draft.get("category") == key)
             for key, (lbl, emo) in el.CATEGORIES.items()])
+        self.title_input = discord.ui.TextInput(placeholder=t("ev_title_placeholder"), default=draft.get("title"),
+                                                max_length=80)
         self.when = discord.ui.TextInput(placeholder=t("ev_when_placeholder"), default=draft.get("when"), max_length=30)
         self.duration = discord.ui.TextInput(required=False, placeholder=t("ev_duration_placeholder"),
                                              default=draft.get("duration"), max_length=10)
-        self.description = discord.ui.TextInput(style=discord.TextStyle.paragraph, required=False, max_length=1000,
-                                                placeholder=t("ev_desc_placeholder"), default=draft.get("description"))
+        self.add_item(discord.ui.Label(text=t("ev_f_title"), description=t("ev_title_hint"),
+                                       component=self.title_input))
         self.add_item(discord.ui.Label(text=t("ev_f_category"), component=self.category))
         self.add_item(discord.ui.Label(text=t("ev_f_when_input"), description=t("ev_when_hint"), component=self.when))
         self.add_item(discord.ui.Label(text=t("ev_f_duration_input"), description=t("ev_duration_hint"),
                                        component=self.duration))
-        self.add_item(discord.ui.Label(text=t("ev_f_description"), component=self.description))
         self.people = None
         if kind == "private":
             defaults = [m for uid in draft.get("people", []) if (m := guild.get_member(uid))][:25]
@@ -151,8 +152,8 @@ class EventModal(discord.ui.Modal):
                                            component=self.people))
 
     def draft(self) -> dict:
-        return {"category": self.category.values[0] if self.category.values else None, "when": self.when.value,
-                "duration": self.duration.value, "description": self.description.value,
+        return {"title": self.title_input.value, "category": self.category.values[0] if self.category.values else None,
+                "when": self.when.value, "duration": self.duration.value,
                 "people": [u.id for u in self.people.values] if self.people else []}
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -160,13 +161,15 @@ class EventModal(discord.ui.Modal):
         try:
             start = el.parse_when(draft["when"], discord.utils.utcnow())
             minutes = el.parse_duration(draft["duration"])
+            if not el.clean_title(draft["title"]):
+                raise ValueError("title")
         except ValueError as exc:
             await interaction.response.send_message(
                 t(f"ev_bad_{exc}"), ephemeral=True,
                 view=RetryView(self.cog, self.kind, draft, self.event_id, interaction.user.id))
             return
         await interaction.response.defer(ephemeral=True, thinking=True)
-        description = draft["description"].strip()
+        title = el.clean_title(draft["title"])
         category = draft["category"] or "sonstiges"
         invitees = list(self.people.values) if self.people else []
         if self.event_id:
@@ -177,12 +180,12 @@ class EventModal(discord.ui.Modal):
             if not await self.cog.may_manage(interaction.user, ev):
                 await interaction.followup.send(t("ev_manage_denied_" + ev["type"]), ephemeral=True)
                 return
-            notes = await self.cog.edit_event(interaction.guild, ev, interaction.user, category, start, minutes,
-                                              description, invitees if self.people else None)
+            notes = await self.cog.edit_event(interaction.guild, ev, interaction.user, title, category, start,
+                                              minutes, invitees if self.people else None)
             text = t("ev_saved")
         else:
-            ev, notes = await self.cog.create_event(interaction.guild, interaction.user, self.kind, category, start,
-                                                    minutes, description, invitees)
+            ev, notes = await self.cog.create_event(interaction.guild, interaction.user, self.kind, title, category,
+                                                    start, minutes, invitees)
             config = await db.get_config(interaction.guild_id)
             text = t("ev_created", link=jump(interaction.guild_id, ev, config))
         await interaction.followup.send("\n".join([text] + notes), ephemeral=True)
@@ -337,8 +340,9 @@ class EventsCog(commands.Cog):
             return
         await interaction.response.send_message(t("ev_choose_kind"), view=KindView(self), ephemeral=True)
 
-    async def create_event(self, guild: discord.Guild, creator: discord.Member, kind: str, category: str,
-                           start: dt.datetime, minutes: int, description: str, invitees=()) -> Tuple[dict, List[str]]:
+    async def create_event(self, guild: discord.Guild, creator: discord.Member, kind: str, title: str,
+                           category: str, start: dt.datetime, minutes: int,
+                           invitees=()) -> Tuple[dict, List[str]]:
         config = await db.get_config(guild.id)
         channel = _channel(guild, config, "events")
         if not isinstance(channel, discord.TextChannel):
@@ -346,8 +350,8 @@ class EventsCog(commands.Cog):
         now = discord.utils.utcnow()
         end = start + dt.timedelta(minutes=minutes)
         notes = []
-        event_id = await db.create_event(guild.id, kind, category, el.iso(start), el.iso(end), description, creator.id,
-                                         el.initial_reminded(start, now, st.reminder_minutes(config)))
+        event_id = await db.create_event(guild.id, kind, title, category, el.iso(start), el.iso(end), "",
+                                         creator.id, el.initial_reminded(start, now, st.reminder_minutes(config)))
         await db.set_participant(event_id, creator.id, GOING)
         members, skipped = self._filter_invitees(guild, config, creator, invitees)
         for m in members:
@@ -358,10 +362,9 @@ class EventsCog(commands.Cog):
         if kind == "alliance":
             try:
                 sev = await guild.create_scheduled_event(
-                    name=el.event_name(category, description), start_time=start, end_time=end,
+                    name=el.event_name(title), start_time=start, end_time=end,
                     entity_type=discord.EntityType.external, location=t("ev_location_pending"),
-                    privacy_level=discord.PrivacyLevel.guild_only, description=logfmt.clip(description or "", 1000),
-                    reason=f"GFK-Bot: Event von {creator}")
+                    privacy_level=discord.PrivacyLevel.guild_only, reason=f"GFK-Bot: Event von {creator}")
                 fields["discord_event_id"] = sev.id
             except discord.HTTPException as exc:
                 log.warning("Discord-Event nicht anlegbar: %s", exc)
@@ -370,7 +373,7 @@ class EventsCog(commands.Cog):
         embed, view = card(ev, await db.participants(event_id))
         message = await channel.send(embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())
         fields["message_id"] = message.id
-        name = el.thread_name(category, start, description)
+        name = el.thread_name(category, title)
         try:
             if kind == "alliance":
                 thread = await message.create_thread(name=name, auto_archive_duration=10080)
@@ -395,14 +398,14 @@ class EventsCog(commands.Cog):
                 await self._post(guild, ev, intro)
         return ev, notes
 
-    async def edit_event(self, guild: discord.Guild, ev: dict, actor: discord.Member, category: str,
-                         start: dt.datetime, minutes: int, description: str, invitees=None) -> List[str]:
+    async def edit_event(self, guild: discord.Guild, ev: dict, actor: discord.Member, title: str, category: str,
+                         start: dt.datetime, minutes: int, invitees=None) -> List[str]:
         config = await db.get_config(guild.id)
         now = discord.utils.utcnow()
         end = start + dt.timedelta(minutes=minutes)
         old_start, old_end = el.from_iso(ev["start_at"]), el.from_iso(ev["end_at"])
         time_changed = start != old_start or end != old_end
-        fields = {"category": category, "start_at": el.iso(start), "end_at": el.iso(end), "description": description}
+        fields = {"title": title, "category": category, "start_at": el.iso(start), "end_at": el.iso(end)}
         notes = []
         vc = guild.get_channel(ev["voice_channel_id"]) if ev["voice_channel_id"] else None
         if time_changed:
@@ -431,8 +434,7 @@ class EventsCog(commands.Cog):
         ev = await db.get_event(ev["id"])
         sev = await self._scheduled(guild, ev)
         if sev is not None and sev.status == discord.EventStatus.scheduled:
-            kwargs = dict(name=el.event_name(category, description), description=logfmt.clip(description or "", 1000),
-                          start_time=start, end_time=end)
+            kwargs = dict(name=el.event_name(title), start_time=start, end_time=end)
             if sev.entity_type == discord.EntityType.voice and vc is None:
                 kwargs.update(entity_type=discord.EntityType.external, location=t("ev_location_pending"), channel=None)
             try:
@@ -441,12 +443,12 @@ class EventsCog(commands.Cog):
                 log.warning("Discord-Event %s nicht änderbar: %s", sev.id, exc)
         if thread is not None:
             try:
-                await thread.edit(name=el.thread_name(category, start, description))
+                await thread.edit(name=el.thread_name(category, title))
             except discord.HTTPException:
                 pass
         if vc is not None:
             try:
-                await vc.edit(name=el.voice_name(category, start))
+                await vc.edit(name=el.voice_name(title))
             except discord.HTTPException:
                 pass
         await self.update_card(guild, ev)
@@ -494,9 +496,9 @@ class EventsCog(commands.Cog):
                 return
             parts = await db.participants(event_id)
             start, end = el.from_iso(ev["start_at"]), el.from_iso(ev["end_at"])
-            draft = {"category": ev["category"], "when": el.input_value(start),
+            draft = {"title": el.title_of(ev), "category": ev["category"],
+                     "when": el.input_value(start),
                      "duration": el.duration_input(int((end - start).total_seconds() // 60)),
-                     "description": ev["description"] or "",
                      "people": [u for u, s in parts.items() if s == GOING]}
             await interaction.response.send_modal(EventModal(self, interaction.guild, ev["type"], draft, event_id))
         elif action == "cancel":
@@ -508,6 +510,9 @@ class EventsCog(commands.Cog):
 
     async def ask(self, interaction: discord.Interaction, ev: dict):
         """Privates Event: Anfrage eines nicht eingeladenen Mitglieds an den Ersteller (im privaten Thread)."""
+        if interaction.user.id == ev["creator_id"]:
+            await interaction.response.send_message(t("ev_ask_creator"), ephemeral=True)
+            return
         state = (await db.participants(ev["id"])).get(interaction.user.id)
         if state == GOING:
             await interaction.response.send_message(t("ev_ask_already_in"), ephemeral=True)
@@ -635,7 +640,7 @@ class EventsCog(commands.Cog):
             for key in names.INTERNAL:
                 if role := _role(guild, config, key):
                     overwrites[role] = discord.PermissionOverwrite(**VOICE_ALLOW)
-        vc = await category.create_voice_channel(el.voice_name(ev["category"], start), overwrites=overwrites,
+        vc = await category.create_voice_channel(el.voice_name(el.title_of(ev)), overwrites=overwrites,
                                                  reason=f"GFK-Bot: Event {ev['id']}")
         await db.update_event(ev["id"], voice_channel_id=vc.id)
         sev = await self._scheduled(guild, ev)
@@ -645,9 +650,9 @@ class EventsCog(commands.Cog):
             elif ev["type"] == "private" and sev is None and start > discord.utils.utcnow() + dt.timedelta(minutes=2):
                 # Event im privaten Sprachkanal: nur für die Teilnehmer sichtbar (Kanalrechte)
                 sev = await guild.create_scheduled_event(
-                    name=el.event_name(ev["category"], ev["description"]), start_time=start, end_time=end,
+                    name=el.event_name(el.title_of(ev)), start_time=start, end_time=end,
                     entity_type=discord.EntityType.voice, channel=vc, privacy_level=discord.PrivacyLevel.guild_only,
-                    description=logfmt.clip(ev["description"] or "", 1000), reason=f"GFK-Bot: Event {ev['id']}")
+                    reason=f"GFK-Bot: Event {ev['id']}")
                 await db.update_event(ev["id"], discord_event_id=sev.id)
         except discord.HTTPException as exc:
             log.warning("Discord-Event zu Event %s nicht umstellbar: %s", ev["id"], exc)
