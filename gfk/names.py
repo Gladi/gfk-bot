@@ -95,3 +95,16 @@ def choices(actor_status: Set[str], target_status: Set[str], alliance: Optional[
             continue
         out.append(target)
     return out
+
+
+# Wer den Bot nutzen darf (Meldungen, Events): nur allianzintern
+INTERNAL = {"mitglied", "fuehrung", "admiral"}
+LEAD = {"fuehrung", "admiral"}            # der Admiral zählt zur Führung
+
+
+def is_internal(status: Set[str]) -> bool:
+    return bool(status & INTERNAL)
+
+
+def is_lead(status: Set[str]) -> bool:
+    return bool(status & LEAD)

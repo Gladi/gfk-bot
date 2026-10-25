@@ -20,6 +20,10 @@ CHANNEL_KEYS = {
 LOG_KEYS = {"log_user": "user-log", "log_rollen": "rollen-log", "log_kanal": "kanal-log", "log_msg": "msg-log"}
 MSG_DAYS_KEY = "msg_tage"
 MSG_DAYS_DEFAULT, MSG_DAYS_MIN, MSG_DAYS_MAX = 7, 1, 30
+# Meldungen: Kategorien und Forum-Tags (Kategorie + Status)
+REPORT_CATEGORIES = {"roe": "ROE-Verstoß", "nullnode": "Null-Node", "sonstiges": "Sonstiges"}
+REPORT_STATUS_TAGS = {"open": "Offen", "done": "Erledigt"}
+REPORT_TAGS = list(REPORT_CATEGORIES.values()) + list(REPORT_STATUS_TAGS.values())
 REMINDER_KEY = "erinnerung_minuten"
 REMINDER_DEFAULT, REMINDER_MIN, REMINDER_MAX = 30, 5, 240
 # Rollen, die der Bot selbst vergibt - die Bot-Rolle muss über all diesen stehen

@@ -78,11 +78,14 @@ class LogSettingsTests(unittest.TestCase):
     def test_logs_are_optional(self):
         self.assertFalse(set(st.LOG_KEYS.values()) & set(st.missing({})))
 
-    def test_log_texts_exist(self):
+    def test_all_texts_exist(self):
+        import glob
         import re
-        src = open(_testenv.ROOT + "/gfk/cogs/logs.py", encoding="utf-8").read()
-        for key in set(re.findall(r'\bt\("([a-z_]+)"', src)):
-            self.assertIn(key, T, key)
+        for path in glob.glob(_testenv.ROOT + "/gfk/**/*.py", recursive=True):
+            with open(path, encoding="utf-8") as fh:
+                src = fh.read()
+            for key in set(re.findall(r'\bt\("([a-z_]+)"\s*[,)]', src)):
+                self.assertIn(key, T, f"{path}: {key}")
 
 
 if __name__ == "__main__":

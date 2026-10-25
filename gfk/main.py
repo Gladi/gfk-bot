@@ -26,7 +26,8 @@ log = logging.getLogger("gfk")
 HEARTBEAT_FILE = "/tmp/gfk_heartbeat"     # Docker-Healthcheck prüft das Alter dieser Datei
 WATCHDOG_SECONDS = 600                     # so lange ohne Discord-Verbindung -> Prozess beenden, Docker startet neu
 _synced: list = []                         # Befehle in diesem Prozess schon angemeldet
-COGS = ["gfk.cogs.setup", "gfk.cogs.onboarding", "gfk.cogs.roles", "gfk.cogs.logs"]
+COGS = ["gfk.cogs.setup", "gfk.cogs.onboarding", "gfk.cogs.roles", "gfk.cogs.logs", "gfk.cogs.reports",
+        "gfk.cogs.events"]
 
 
 class GfkBot(commands.Bot):

@@ -13,9 +13,10 @@ from gfk import db, names, settings as st, stfc
 from gfk.cogs.onboarding import alliance_for_status, set_status, status_of
 from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
+from gfk.util import SafeView
 
 
-class ChoiceView(discord.ui.View):
+class ChoiceView(SafeView):
     def __init__(self, actor: discord.Member, target: discord.Member, options):
         super().__init__(timeout=120)
         self.actor, self.target = actor, target

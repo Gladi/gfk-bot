@@ -73,6 +73,11 @@ Ziel: Die Führung vergibt den Status, ohne selbst das Recht „Rollen verwalten
 5. Führung und Mitglieder können im Beitrag antworten.
 6. „Erledigt“: nur Führungsrolle; setzt Tag „Erledigt“, vermerkt wer und wann, deaktiviert den Button, archiviert den Beitrag (optional sperren). Andere erhalten eine ephemere Ablehnung.
 
+Umgesetzt (2026-10-25): Kategorie-Auswahl und Datei-Upload (bis 5) direkt im Formular (discord.py 2.7); zu große
+Dateien werden übersprungen, der Melder wird gebeten, sie im Beitrag zu posten. Fehlende Forum-Tags legt
+`/setup panels` an (braucht „Kanäle verwalten“ am Forum), sonst Hinweis in `/setup anzeigen`. Erledigte Beiträge werden
+archiviert, nicht gesperrt (eine neue Antwort holt sie zurück).
+
 ## 5. Modul Eingangskontrolle
 
 1. Neue Nutzer haben keine Rolle und sehen nur den Eingangskanal (Kanalrechte für `@everyone`, kein Zutun des Bots).
@@ -158,6 +163,21 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 - Optional zweite Erinnerung zum Start
 - Erinnerungsstatus in SQLite, damit nach einem Neustart nichts doppelt oder gar nicht gesendet wird
 
+### Umgesetzt (2026-10-25)
+
+- Zeit als Textfeld, deutsche Zeit: `25.10. 20:00`, `25.10.2026 20:00`, `morgen 20:00`, `20:00` (heute bzw. morgen);
+  Dauer `1`, `1,5`, `90min`, `1:30` (15 min bis 24 h, leer = 1 h). Bei Fehlern öffnet „Nochmal öffnen“ das Formular
+  mit den bisherigen Eingaben.
+- Private Events: Teilnehmer per Auswahl direkt im Formular; nur GFK-Mitglieder werden eingeladen.
+- **Erinnerungen und Start-Hinweis kommen in den Thread des Events** (auch allianzweit), damit im Eventkanal nur die
+  Planungs-Nachricht und die Karten stehen; Erwähnt werden „dabei“ und (allianzweit) „vielleicht“.
+- Abgesagte Events: Sprachkanal und Discord-Event sofort weg, die Karte bleibt als „Abgesagt“ bis zum geplanten Ende,
+  dann räumt der Bot Karte und Thread weg (wie bei beendeten Events, sobald der Sprachkanal leer ist).
+- Discord-Event: allianzweit sofort als „extern“, 1 h vorher auf den Sprachkanal umgestellt, beim Start gestartet,
+  am Ende beendet (auf dem Test-Server geprüft). Privat: 1 h vorher ein Discord-Event im privaten Sprachkanal - ob
+  es wirklich nur Teilnehmer sehen, muss ein Konto ohne Admin-Rechte prüfen (Admins sehen alles).
+- Selbsttest ohne Klicks: `python -m gfk.devtools selftest` (Test-Bot vorher stoppen).
+
 ## 6b. Modul Server-Logs (ersetzt den SCNX-Bot)
 
 Jedes Log einzeln konfigurierbar (`/setup logs`, abschalten mit `/setup log_aus`), leer = aus; mehrere Logs dürfen
@@ -203,6 +223,9 @@ in denselben Kanal. Wer etwas geändert hat, kommt aus dem Audit-Log (Änderunge
 6. Private Events
 7. Erinnerungen
 8. Feinschliff: Logs, Fehlertexte, Tests auf einem Testserver
+
+Stand 2026-10-25: Pakete 1-8 und Server-Logs umgesetzt und auf dem Test-Server per Selbsttest geprüft; Nutzertest
+(Klicks, Formulare) steht aus.
 
 ## 10. Offene Entscheidungen
 

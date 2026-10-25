@@ -12,6 +12,7 @@ from discord.ext import commands
 
 from gfk import db, settings as st
 from gfk.texts import t
+from gfk.views import panels as panels_mod
 from gfk.views.panels import PANELS, panel_message
 
 log = logging.getLogger("gfk.setup")
@@ -23,7 +24,7 @@ CHANNEL_PERMS = {
     "vorfallforum": ["view_channel", "send_messages", "embed_links", "attach_files", "manage_threads"],
     "events": ["view_channel", "send_messages", "embed_links", "create_public_threads", "create_private_threads",
                "send_messages_in_threads", "manage_threads"],
-    "event_kategorie": ["view_channel", "manage_channels"],
+    "event_kategorie": ["view_channel", "manage_channels", "connect", "speak"],
     "verwaltung": ["view_channel", "send_messages", "embed_links"],
 }
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
@@ -73,6 +74,17 @@ def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: 
         perms.append("Server: view_audit_log (wer etwas geändert hat)")
     if perms:
         lines.append(t("setup_perm", items=", ".join(perms)))
+    forum = _channel(guild, config, "vorfallforum")
+    if isinstance(forum, discord.ForumChannel):
+        have = {tag.name.casefold() for tag in forum.available_tags}
+        tags = [n for n in st.REPORT_TAGS if n.casefold() not in have]
+        if tags:
+            lines.append(t("setup_forum_tags", items=", ".join(tags)))
+    elif forum is not None:
+        lines.append(t("setup_not_forum"))
+    lead = _role(guild, config, "fuehrung")
+    if lead is not None and not lead.mentionable and not gp.mention_everyone:
+        lines.append(t("setup_lead_mention", role=lead.name))
     if message_content is False and _channel(guild, config, "log_msg") is not None:
         lines.append(t("setup_msg_intent"))
     return lines
@@ -196,7 +208,7 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
 async def post_panels(guild: discord.Guild):
     """Postet die festen Nachrichten oder bearbeitet die vorhandenen (damit sie oben im Kanal bleiben)."""
     config = await db.get_config(guild.id)
-    posted, missing, updates = [], [], {}
+    posted, missing, updates, fresh = [], [], {}, set()
     for kind, (channel_key, *_rest) in PANELS.items():
         ch = _channel(guild, config, channel_key)
         if ch is None:
@@ -214,9 +226,15 @@ async def post_panels(guild: discord.Guild):
         if message is None:
             message = await ch.send(embed=embed, view=view)
             updates[f"panel_{kind}"] = str(message.id)
+            fresh.add(kind)
         posted.append(f"#{ch.name}")
     if updates:
         await db.set_config(guild.id, updates)
+    for kind, hook in list(panels_mod.AFTER_POST.items()):
+        try:
+            await hook(guild, kind in fresh)
+        except Exception:
+            log.exception("Nach dem Posten von %s fehlgeschlagen", kind)
     return posted, missing
 
 

@@ -11,6 +11,9 @@ den nächsten Paketen.
 
 Paket 2/3: Eingangskontrolle mit stfc.pro-Abgleich, Status-Rollen (Kontextmenü „Status ändern“, `/status`).
 
+Meldungen (Vorfallforum mit Tags und „Erledigt“) und Events (allianzweit/privat, Sprachkanal 1 h vorher,
+Erinnerungen im Thread, Aufräumen nach dem Ende).
+
 Server-Logs (ersetzen SCNX): user-, rollen-, kanal-, msg-log, je Kanal über `/setup logs`, abschalten mit
 `/setup log_aus`. Der msg-log merkt sich Nachrichten nur im Arbeitsspeicher (Standard 7 Tage, `msg_tage` 1–30).
 
@@ -24,6 +27,9 @@ Server-Logs (ersetzen SCNX): user-, rollen-, kanal-, msg-log, je Kanal über `/s
 | `gfk/cogs/setup.py` | `/setup` |
 | `gfk/cogs/onboarding.py`, `roles.py` | Eingangskontrolle, Status-Rollen |
 | `gfk/cogs/logs.py`, `gfk/logfmt.py` | Server-Logs, Vergleiche und Nachrichten-Zwischenspeicher |
+| `gfk/cogs/reports.py` | Meldungen ins Vorfallforum |
+| `gfk/cogs/events.py`, `gfk/eventlogic.py` | Eventplanung; Zeit-Eingaben und Fälligkeiten ohne Discord |
+| `gfk/util.py` | Fehlerbehandlung für Buttons und Formulare |
 | `gfk/views/panels.py` | feste Nachrichten mit Buttons |
 | `gfk/devtools.py` | nur Test-Server: Kanäle zuordnen, Rollen anlegen, Prüfung, Panels posten |
 | `gfk/texts.py` | Texte (Deutsch) |
@@ -33,6 +39,8 @@ Server-Logs (ersetzen SCNX): user-, rollen-, kanal-, msg-log, je Kanal über `/s
 - Test-Bot: `docker compose --profile test up -d --build gfk-bot-test` (Token in `.env.gfk-test`, DB `data/gfk-test/`,
   Befehle sofort auf dem Test-Server über `GFK_DEV_GUILD`)
 - Test-Server einrichten: `docker compose --profile test run --rm gfk-bot-test python -m gfk.devtools seed|panels|status`
+- Selbsttest gegen den Test-Server (Meldung, Events mit vorgespulter Uhr): erst
+  `docker compose --profile test stop gfk-bot-test`, dann `... python -m gfk.devtools selftest`
 - Unit-Tests: `docker run --rm --network none -v $PWD/gfk-bot:/src:ro -w /src <image> python -m unittest discover -s tests`
 - Der Live-Dienst `gfk-bot` (`.env.gfk`, `data/gfk/`) kommt zum Live-Gang dazu.
 

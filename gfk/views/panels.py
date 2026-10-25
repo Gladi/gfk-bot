@@ -2,15 +2,18 @@
 GFK-Bot - feste Nachrichten (Panels) mit Buttons, die Neustarts überleben.
 
 Jeder Button hat eine feste custom_id "gfk:panel:<art>". Als DynamicItem registriert, findet discord.py nach einem
-Neustart den passenden Code allein über die custom_id - ohne gespeicherte View. Spätere Pakete ersetzen die
-Platzhalter-Antwort durch die echte Funktion (Namen ändern, Meldung, Event planen).
+Neustart den passenden Code allein über die custom_id - ohne gespeicherte View. Die Module tragen ihre Funktion in
+HANDLERS ein (Namen ändern, Meldung, Event planen).
 """
 import discord
 
 from gfk.texts import t
+from gfk.util import guarded
 
 # Art -> Funktion(interaction), eingetragen von den Modulen (z. B. Eingangskontrolle: "lobby"); sonst Platzhalter
 HANDLERS = {}
+# Art -> async Funktion(guild, newly_posted) nach /setup panels (z. B. Event-Karten unter die neue Planungs-Nachricht)
+AFTER_POST = {}
 
 PANELS = {
     # art: (Kanal-Schlüssel, Titel, Text, Button, Emoji, Farbe)
@@ -34,6 +37,7 @@ class PanelButton(discord.ui.DynamicItem[discord.ui.Button], template=r"gfk:pane
             raise ValueError(kind)
         return cls(kind)
 
+    @guarded
     async def callback(self, interaction: discord.Interaction):
         handler = HANDLERS.get(self.kind)
         if handler is None:

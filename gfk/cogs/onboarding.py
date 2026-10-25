@@ -18,6 +18,7 @@ from discord.ext import commands, tasks
 from gfk import db, names, settings as st, stfc
 from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
+from gfk.util import SafeView, guarded
 from gfk.views import panels
 
 log = logging.getLogger("gfk.onboarding")
@@ -91,7 +92,7 @@ class NameModal(discord.ui.Modal, title=t("name_modal_title")):
                      view=MatchView(self.cog, interaction.user.id, tag, name, hints))
 
 
-class MatchView(discord.ui.View):
+class MatchView(SafeView):
     """Auswahl aus den ähnlichen Namen der stfc.pro-Liste (GFK: nur Namen aus der Liste, kein freies Übernehmen)."""
 
     def __init__(self, cog, user_id: int, tag: str, name: str, hints):
@@ -128,6 +129,7 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
     async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Button, match):
         return cls(int(match["user"]), match["role"])
 
+    @guarded
     async def callback(self, interaction: discord.Interaction):
         guild = interaction.guild
         config = await db.get_config(guild.id)
