@@ -28,6 +28,7 @@ CHANNEL_PERMS = {
     "verwaltung": ["view_channel", "send_messages", "embed_links"],
     "eingang_info": ["view_channel", "send_messages", "embed_links"],
     "namen_log": ["view_channel", "send_messages_in_threads"],
+    "logbuch": ["view_channel", "send_messages", "send_messages_in_threads", "manage_threads"],
 }
 CHANNEL_LABELS = {**st.CHANNEL_KEYS, **st.OPTIONAL_CHANNEL_KEYS}
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
@@ -140,7 +141,8 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
 
     @app_commands.command(name="kanäle", description="Kanäle des Bots festlegen")
     @app_commands.describe(namen_zusatz="Optional: weiterer Kanal mit der Nachricht „Namen ändern“",
-                           namensaenderungen="Optional: Thread/Forenbeitrag für geänderte Spielnamen (sonst Verwaltung)")
+                           namensaenderungen="Optional: Thread/Forenbeitrag für geänderte Spielnamen (sonst Verwaltung)",
+                           logbuch="Optional: Forum, in dem der Bot den Beitrag „Vorfall Statistik“ führt")
     @app_commands.rename(namensaenderungen="namensänderungen")
     async def channels(self, interaction: discord.Interaction, eingang: Optional[discord.TextChannel] = None,
                        meldungen: Optional[discord.TextChannel] = None,
@@ -149,10 +151,11 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
                        event_kategorie: Optional[discord.CategoryChannel] = None,
                        verwaltung: Optional[discord.TextChannel] = None,
                        namen_zusatz: Optional[discord.TextChannel] = None,
-                       namensaenderungen: Optional[discord.Thread] = None):
+                       namensaenderungen: Optional[discord.Thread] = None,
+                       logbuch: Optional[discord.ForumChannel] = None):
         given = {"eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
                  "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz,
-                 "namen_log": namensaenderungen}
+                 "namen_log": namensaenderungen, "logbuch": logbuch}
         values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
         labels = [f"{CHANNEL_LABELS[k]} = #{c.name}" for k, c in given.items() if c is not None]
         await self._save(interaction, values, labels)

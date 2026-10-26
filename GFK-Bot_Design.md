@@ -78,6 +78,14 @@ Dateien werden übersprungen, der Melder wird gebeten, sie im Beitrag zu posten.
 `/setup panels` an (braucht „Kanäle verwalten“ am Forum), sonst Hinweis in `/setup anzeigen`. Erledigte Beiträge werden
 archiviert, nicht gesperrt (eine neue Antwort holt sie zurück).
 
+Ergänzt 2026-10-26: Button „In Bearbeitung“ (nur Führung; Tag „In Bearbeitung“, Name + Zeit im Embed), danach
+„Erledigt“. 0-Node-Meldungen sind nur Nachweise: keine Buttons, nur der Kategorie-Tag. Vorhandene Forum-Tags zählen
+als Bot-Tags („0-Node“ = Null-Node, „Neue Meldung“ = Offen). Aufräumen alle 6 Stunden im Vorfallforum (auch
+Handbeiträge): erledigt + 30 Tage ohne Aktivität und 0-Node nach 14 Tagen werden gelöscht, angepinnte nie.
+Statistik: Beitrag „Vorfall Statistik“ im Logbuch-Forum (angepinnt), je Allianz eine Tabelle (Spieler als Zeilen;
+Spalten RoE, 0-Node, Sonstiges, Summe, letzte 30 Tage), aktualisiert bei jeder Meldung und alle 6 Stunden; zählt nur
+Meldungen über den Bot, auch nach dem Löschen der Beiträge. Fremde Nachrichten in diesem Beitrag löscht der Bot.
+
 ## 5. Modul Eingangskontrolle
 
 1. Neue Nutzer haben keine Rolle und sehen nur den Eingangskanal (Kanalrechte für `@everyone`, kein Zutun des Bots).

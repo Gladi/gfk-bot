@@ -91,6 +91,10 @@ def init():
         columns = {r[1] for r in conn.execute("PRAGMA table_info(events)")}
         if "title" not in columns:
             conn.execute("ALTER TABLE events ADD COLUMN title TEXT")
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(reports)")}
+        if "progress_by" not in columns:
+            conn.execute("ALTER TABLE reports ADD COLUMN progress_by INTEGER")
+            conn.execute("ALTER TABLE reports ADD COLUMN progress_at TEXT")
 
 
 # ----------------- Konfiguration (pro Server, Schlüssel -> Wert) -----------------
@@ -208,11 +212,26 @@ def get_report_sync(report_id: int):
 
 
 def close_report_sync(report_id: int, closed_by: int) -> bool:
-    """True, wenn die Meldung bis eben offen war (doppelte Klicks schließen nicht zweimal)."""
+    """True, wenn die Meldung bis eben offen oder in Bearbeitung war (doppelte Klicks schließen nicht zweimal)."""
     with _conn() as conn:
         cur = conn.execute("UPDATE reports SET status = 'done', closed_by = ?, closed_at = datetime('now') "
-                           "WHERE id = ? AND status = 'open'", (closed_by, report_id))
+                           "WHERE id = ? AND status IN ('open', 'progress')", (closed_by, report_id))
         return cur.rowcount == 1
+
+
+def progress_report_sync(report_id: int, user_id: int) -> bool:
+    """Offen -> In Bearbeitung. True nur beim ersten Mal."""
+    with _conn() as conn:
+        cur = conn.execute("UPDATE reports SET status = 'progress', progress_by = ?, progress_at = datetime('now') "
+                           "WHERE id = ? AND status = 'open'", (user_id, report_id))
+        return cur.rowcount == 1
+
+
+def report_rows_sync(guild_id: int):
+    """(Kategorie, Allianz, Spieler, Zeitpunkt als Unix-Zeit) aller Meldungen - Grundlage der Statistik."""
+    with _conn() as conn:
+        return conn.execute("SELECT category, alliance, player, CAST(strftime('%s', created_at) AS INTEGER) "
+                            "FROM reports WHERE guild_id = ? AND thread_id IS NOT NULL", (guild_id,)).fetchall()
 
 
 def delete_report_sync(report_id: int):
@@ -224,6 +243,8 @@ create_report = _async(create_report_sync)
 set_report_thread = _async(set_report_thread_sync)
 get_report = _async(get_report_sync)
 close_report = _async(close_report_sync)
+progress_report = _async(progress_report_sync)
+report_rows = _async(report_rows_sync)
 delete_report = _async(delete_report_sync)
 
 

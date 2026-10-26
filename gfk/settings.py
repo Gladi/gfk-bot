@@ -18,7 +18,8 @@ CHANNEL_KEYS = {
 }
 # Optionale Kanäle (fehlen nicht in der Prüfung): weitere Stelle für die Nachricht "Namen ändern"
 OPTIONAL_CHANNEL_KEYS = {"eingang_info": "Zusätzlich „Namen ändern“",
-                         "namen_log": "Namensänderungen (Spielname geändert)"}
+                         "namen_log": "Namensänderungen (Spielname geändert)",
+                         "logbuch": "Logbuch (Beitrag „Vorfall Statistik“)"}
 # Zusätzliche Kanäle je fester Nachricht (Art -> Kanal-Schlüssel)
 PANEL_EXTRA_CHANNELS = {"lobby": ["eingang_info"]}
 # Server-Logs (ersetzen SCNX): optional, leer = aus
@@ -27,11 +28,12 @@ MSG_DAYS_KEY = "msg_tage"
 MSG_DAYS_DEFAULT, MSG_DAYS_MIN, MSG_DAYS_MAX = 7, 1, 30
 # Meldungen: Kategorien und Forum-Tags (Kategorie + Status)
 REPORT_CATEGORIES = {"roe": "ROE-Verstoß", "nullnode": "Null-Node", "sonstiges": "Sonstiges"}
-REPORT_STATUS_TAGS = {"open": "Offen", "done": "Erledigt"}
+REPORT_STATUS_TAGS = {"open": "Offen", "progress": "In Bearbeitung", "done": "Erledigt"}
 REPORT_TAGS = list(REPORT_CATEGORIES.values()) + list(REPORT_STATUS_TAGS.values())
 # Schon vorhandene Forum-Tags, die als Bot-Tag zählen (GFK-Server: "0-Node", "Neue Meldung") - keine Doppelten anlegen
 REPORT_TAG_ALIASES = {"Null-Node": ["0-Node"], "Offen": ["Neue Meldung"]}
-REPORT_CLEARED_ON_DONE = ["In Bearbeitung"]      # von Hand gesetzte Zwischenstände, die "Erledigt" entfernt
+# Aufräumen im Vorfallforum: erledigte Beiträge nach 30 Tagen ohne Aktivität, 0-Node-Nachweise nach 14 Tagen löschen
+REPORT_DONE_DAYS, REPORT_NULLNODE_DAYS = 30, 14
 
 
 def tag_names(name: str) -> List[str]:
