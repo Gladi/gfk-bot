@@ -120,6 +120,54 @@ class MemberDbTests(unittest.TestCase):
         self.assertEqual(db.unlinked_gfk_members_sync(1), [(4, "Neuling2")])   # GFK ohne Spieler-ID
 
 
+class _Role:
+    def __init__(self, rid):
+        self.id = rid
+
+
+class _Member:
+    def __init__(self, uid, nick, roles=(), bot=False):
+        self.id, self.nick, self.bot = uid, nick, bot
+        self.roles = [_Role(r) for r in roles]
+        self.mention = f"<@{uid}>"
+
+
+class _Guild:
+    def __init__(self, gid, members):
+        self.id, self.members = gid, members
+
+
+class LinkExistingTests(unittest.TestCase):
+    def test_find_prefix(self):
+        roster = {p["playerid"]: stfc.Player(p["playerid"], p["owner"], "GFK", "") for p in PLAYERS}
+        self.assertEqual(stfc.find_prefix(roster, "Kestr…").player_id, 33)
+        self.assertIsNone(stfc.find_prefix(roster, "…"))
+        roster[44] = stfc.Player(44, "Kestrel_88", "GFK", "")
+        self.assertIsNone(stfc.find_prefix(roster, "Kestr…"))              # nicht eindeutig
+
+    def test_link_existing(self):
+        import asyncio
+        from gfk.cogs.onboarding import link_existing, link_report
+        db.init()
+        g = 4242
+        db.set_config_sync(g, {st.role_key("mitglied"): "500"})
+        db.save_member_sync(g, 4, "GFK", "Kestrel_77", 33)                  # schon verknüpft
+        roster = {p["playerid"]: stfc.Player(p["playerid"], p["owner"], "GFK", "") for p in PLAYERS}
+        members = [_Member(1, "[GFK] McRunner"), _Member(2, "[GFK] Unbekannt"), _Member(3, "[ABC] Ella Star"),
+                   _Member(4, "[GFK] Kestrel_77"), _Member(5, "Ohne Kürzel", roles=[500]), _Member(6, None, bot=True),
+                   _Member(7, "[gfk] ëlla star")]
+        linked, already, missing, untagged = asyncio.run(link_existing(_Guild(g, members), roster))
+        self.assertEqual(sorted(m.id for m in linked), [1, 7])
+        self.assertEqual(already, 1)
+        self.assertEqual([(m.id, n) for m, n in missing], [(2, "Unbekannt")])
+        self.assertEqual([m.id for m in untagged], [5])
+        self.assertEqual(db.get_member_sync(g, 1), ("GFK", "McRunner", 11))
+        self.assertEqual(db.get_member_sync(g, 2), ("GFK", "Unbekannt", None))   # später automatisch verknüpfbar
+        self.assertIsNone(db.get_member_sync(g, 3))
+        embed = link_report(linked, already, missing, untagged)
+        self.assertEqual(len(embed.fields), 2)
+
+
 if __name__ == "__main__":
     unittest.main()
 

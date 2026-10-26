@@ -15,7 +15,7 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
-from gfk import db, names, settings as st, stfc
+from gfk import db, logfmt, names, settings as st, stfc
 from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
 from gfk.util import SafeView, guarded
@@ -184,6 +184,48 @@ async def set_status(guild: discord.Guild, config: Dict[str, str], member: disco
     if add:
         await member.add_roles(*to_role(add), reason=reason)
     await db.log_role_change(guild.id, actor.id, member.id, ",".join(sorted(current)) or "-", target)
+
+
+# ----------------- einmaliger Abgleich der Bestandsmitglieder -----------------
+async def link_existing(guild: discord.Guild, roster: Dict[int, stfc.Player]):
+    """Wer schon "[GFK] Name" heißt, aber nie "Namen ändern" benutzt hat: mit stfc.pro verknüpfen. Rollen und Nicknames
+    bleiben unverändert. Nicht Gefundene werden ohne Spieler-ID gespeichert - der tägliche Abgleich verknüpft sie, sobald
+    sie auf stfc.pro auftauchen. Liefert (verknüpft, schon verknüpft, nicht gefunden [(Mitglied, Name)],
+    Mitglied/Führung ohne [GFK] im Nickname)."""
+    config = await db.get_config(guild.id)
+    linked, already, missing, untagged = [], 0, [], []
+    for member in guild.members:
+        if member.bot:
+            continue
+        if names.tag_of_nick(member.nick) != stfc.ALLIANCE_TAG:
+            if status_of(member, config) & {"mitglied", "fuehrung"}:
+                untagged.append(member)
+            continue
+        row = await db.get_member(guild.id, member.id)
+        if row and row[2] is not None:
+            already += 1
+            continue
+        name = names.NICK_TAG_RE.sub("", member.nick).strip()
+        player = stfc.find(roster, name) or (stfc.find_prefix(roster, name) if name.endswith("…") else None)
+        if player is not None:
+            await db.save_member(guild.id, member.id, stfc.ALLIANCE_TAG, player.name, player.player_id)
+            linked.append(member)
+        else:
+            await db.save_member(guild.id, member.id, stfc.ALLIANCE_TAG, name, None)
+            missing.append((member, name))
+    return linked, already, missing, untagged
+
+
+def link_report(linked, already: int, missing, untagged) -> discord.Embed:
+    e = discord.Embed(title=t("verw_link_title"), color=discord.Color.blurple(),
+                      description=t("verw_link_summary", linked=len(linked), already=already, missing=len(missing)))
+    if missing:
+        e.add_field(name=t("verw_link_missing"), inline=False, value=logfmt.clip(
+            "\n".join(f"{m.mention} ({name})" for m, name in missing) + "\n" + t("verw_link_missing_hint")))
+    if untagged:
+        e.add_field(name=t("verw_link_untagged"), inline=False,
+                    value=logfmt.clip(" ".join(m.mention for m in untagged) + "\n" + t("verw_link_untagged_hint")))
+    return e
 
 
 # ----------------- Modul -----------------

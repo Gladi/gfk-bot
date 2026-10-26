@@ -195,6 +195,19 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         embed.add_field(name=t("setup_checks"), inline=False, value="\n".join(problems) or t("setup_ok"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="abgleich", description="Bestehende [GFK]-Mitglieder einmalig mit stfc.pro verknüpfen")
+    async def link(self, interaction: discord.Interaction):
+        from gfk.cogs.onboarding import link_existing, link_report
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        roster = await self.bot.roster.get(self.bot.web, max_age=0)
+        if roster is None:
+            await interaction.followup.send(t("name_stfc_down"), ephemeral=True)
+            return
+        linked, already, missing, untagged = await link_existing(interaction.guild, roster)
+        report = link_report(linked, already, missing, untagged)
+        await interaction.followup.send(embed=report, ephemeral=True)
+        await notify_verwaltung(interaction.guild, embed=report)
+
     @app_commands.command(name="panels", description="Feste Nachrichten (Buttons) posten oder aktualisieren")
     async def panels(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)

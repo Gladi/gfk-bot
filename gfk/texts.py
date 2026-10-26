@@ -195,6 +195,15 @@ T = {
     "status_already": "ℹ️ {target} ist schon **{role}**.",
     "sync_renamed": "✏️ Abgleich mit stfc.pro: {user} heißt jetzt **{nick}** (vorher {old}).",
     "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste.",
+    "verw_link_title": "🔗 Abgleich der Mitglieder mit stfc.pro",
+    "verw_link_summary": "{linked} verknüpft, {already} waren schon verknüpft, {missing} nicht in der GFK-Liste gefunden. "
+                         "Rollen und Nicknames wurden nicht verändert.",
+    "verw_link_missing": "Nicht gefunden (Nickname-Name)",
+    "verw_link_missing_hint": "Bitte „Namen ändern“ im Eingangskanal nutzen. Sonst verknüpft der tägliche Abgleich sie "
+                              "automatisch, sobald stfc.pro sie unter diesem Namen listet.",
+    "verw_link_untagged": "Mitglied oder Führung ohne [GFK] im Nickname",
+    "verw_link_untagged_hint": "Nur zur Info - der Bot ändert nichts. Ändert jemand davon seinen Nickname, ohne [GFK] "
+                               "voranzustellen, wird er automatisch Gast.",
     "sync_linked": "🔗 Abgleich mit stfc.pro: {user} steht jetzt in der GFK-Liste ({name}, {rank}) und ist verknüpft.",
 }
 

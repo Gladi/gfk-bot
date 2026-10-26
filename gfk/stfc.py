@@ -77,6 +77,13 @@ def find(players: Dict[int, Player], name: str) -> Optional[Player]:
     return next((p for p in players.values() if normalize(p.name) == key), None) if key else None
 
 
+def find_prefix(players: Dict[int, Player], name: str) -> Optional[Player]:
+    """Vom Bot gekürzter Name ("Sehr langer Na…"): nur ein eindeutiger Treffer zählt."""
+    key = normalize(name.rstrip("…"))
+    hits = [p for p in players.values() if normalize(p.name).startswith(key)] if key else []
+    return hits[0] if len(hits) == 1 else None
+
+
 def suggestions(players: Dict[int, Player], name: str, limit: int = 5, cutoff: float = 0.6) -> List[Player]:
     """Ähnliche Namen für Tippfehler, beste zuerst."""
     by_norm = {normalize(p.name): p for p in players.values()}
