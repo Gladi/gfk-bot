@@ -26,7 +26,9 @@ CHANNEL_PERMS = {
                "send_messages_in_threads", "manage_threads"],
     "event_kategorie": ["view_channel", "manage_channels", "connect", "speak"],
     "verwaltung": ["view_channel", "send_messages", "embed_links"],
+    "eingang_info": ["view_channel", "send_messages", "embed_links"],
 }
+CHANNEL_LABELS = {**st.CHANNEL_KEYS, **st.OPTIONAL_CHANNEL_KEYS}
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
 LOG_PERMS = ["view_channel", "send_messages", "embed_links"]
 
@@ -65,7 +67,7 @@ def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: 
         if ch is None:
             continue
         cp = ch.permissions_for(me)
-        perms += [f"{st.CHANNEL_KEYS[key]}: {p}" for p in needed if not getattr(cp, p, False)]
+        perms += [f"{CHANNEL_LABELS[key]}: {p}" for p in needed if not getattr(cp, p, False)]
     active_logs = [k for k in st.LOG_KEYS if _channel(guild, config, k) is not None]
     for key in active_logs:
         cp = _channel(guild, config, key).permissions_for(me)
@@ -136,16 +138,18 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         await self._save(interaction, values, labels)
 
     @app_commands.command(name="kanäle", description="Kanäle des Bots festlegen")
+    @app_commands.describe(namen_zusatz="Optional: weiterer Kanal mit der Nachricht „Namen ändern“")
     async def channels(self, interaction: discord.Interaction, eingang: Optional[discord.TextChannel] = None,
                        meldungen: Optional[discord.TextChannel] = None,
                        vorfallforum: Optional[discord.ForumChannel] = None,
                        events: Optional[discord.TextChannel] = None,
                        event_kategorie: Optional[discord.CategoryChannel] = None,
-                       verwaltung: Optional[discord.TextChannel] = None):
+                       verwaltung: Optional[discord.TextChannel] = None,
+                       namen_zusatz: Optional[discord.TextChannel] = None):
         given = {"eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
-                 "event_kategorie": event_kategorie, "verwaltung": verwaltung}
+                 "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz}
         values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
-        labels = [f"{st.CHANNEL_KEYS[k]} = #{c.name}" for k, c in given.items() if c is not None]
+        labels = [f"{CHANNEL_LABELS[k]} = #{c.name}" for k, c in given.items() if c is not None]
         await self._save(interaction, values, labels)
 
     @app_commands.command(name="logs", description="Kanäle der Server-Logs festlegen (ersetzt SCNX)")
@@ -185,7 +189,9 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
             for key, label in st.ROLE_KEYS.items()))
         embed.add_field(name=t("setup_channels"), inline=False, value="\n".join(
             f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_unset')}"
-            for key, label in st.CHANNEL_KEYS.items()))
+            for key, label in st.CHANNEL_KEYS.items()) + "\n" + "\n".join(
+            f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
+            for key, label in st.OPTIONAL_CHANNEL_KEYS.items()))
         embed.add_field(name=t("setup_logs"), inline=False, value="\n".join(
             f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
             for key, label in st.LOG_KEYS.items()) + "\n" + t("setup_msg_days", days=st.msg_days(config)))
@@ -222,13 +228,18 @@ async def post_panels(guild: discord.Guild):
     """Postet die festen Nachrichten oder bearbeitet die vorhandenen (damit sie oben im Kanal bleiben)."""
     config = await db.get_config(guild.id)
     posted, missing, updates, fresh = [], [], {}, set()
+    targets = []                                   # (Art, Kanal-Schlüssel, Config-Schlüssel der Nachricht, Pflicht)
     for kind, (channel_key, *_rest) in PANELS.items():
+        targets.append((kind, channel_key, f"panel_{kind}", True))
+        targets += [(kind, k, f"panel_{kind}_{k}", False) for k in st.PANEL_EXTRA_CHANNELS.get(kind, [])]
+    for kind, channel_key, msg_key, required in targets:
         ch = _channel(guild, config, channel_key)
         if ch is None:
-            missing.append(st.CHANNEL_KEYS[channel_key])
+            if required:
+                missing.append(st.CHANNEL_KEYS[channel_key])
             continue
         embed, view = panel_message(kind)
-        msg_id = config.get(f"panel_{kind}")
+        msg_id = config.get(msg_key)
         message = None
         if msg_id:
             try:
@@ -238,8 +249,9 @@ async def post_panels(guild: discord.Guild):
                 message = None
         if message is None:
             message = await ch.send(embed=embed, view=view)
-            updates[f"panel_{kind}"] = str(message.id)
-            fresh.add(kind)
+            updates[msg_key] = str(message.id)
+            if required:
+                fresh.add(kind)
         posted.append(f"#{ch.name}")
     if updates:
         await db.set_config(guild.id, updates)

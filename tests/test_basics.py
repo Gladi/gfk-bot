@@ -86,5 +86,14 @@ class TextTests(unittest.TestCase):
             self.assertTrue(t(key, **{f: "x" for f in fields}) if fields else t(key))
 
 
+class ExtraPanelTests(unittest.TestCase):
+    def test_extra_channels_optional(self):
+        for kind, keys in st.PANEL_EXTRA_CHANNELS.items():
+            self.assertIn(kind, panels.PANELS)
+            for key in keys:
+                self.assertIn(key, st.OPTIONAL_CHANNEL_KEYS)
+        self.assertFalse(set(st.OPTIONAL_CHANNEL_KEYS.values()) & set(st.missing({})))
+
+
 if __name__ == "__main__":
     unittest.main()
