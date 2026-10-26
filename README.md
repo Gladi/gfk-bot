@@ -1,54 +1,73 @@
-# GFK-Bot (privat)
+# GFK-Bot
 
-Discord-Bot für die GFK-Allianz in Star Trek Fleet Command: Eingangskontrolle, Status-Rollen, Vorfallmeldungen und
-Eventplanung. Nur allianzintern. Umfang und Entscheidungen: [GFK-Bot_Design.md](GFK-Bot_Design.md).
+*A Discord bot for the German Star Trek Fleet Command alliance GFK: onboarding with roster check against
+stfc.pro, status roles without "Manage Roles" for officers, incident reports with a forum workflow and statistics,
+event planning with voice channels and reminders, and server logs. German UI. Licensed under AGPL-3.0.*
 
-## Stand
+Discord-Bot für die GFK-Allianz in Star Trek Fleet Command. Er ist auf einen Server zugeschnitten (Texte Deutsch,
+Allianz GFK), alle Rollen und Kanäle werden aber per `/setup` eingestellt. Entscheidungen und Abläufe im Detail:
+[GFK-Bot_Design.md](GFK-Bot_Design.md).
 
-Paket 1 (Grundgerüst): Container, SQLite, `/setup` (Rollen, Kanäle, Erinnerung, Anzeige mit Prüfung, feste
-Nachrichten), Buttons mit fester `custom_id`, die Neustarts überleben. Die Funktionen hinter den Buttons folgen in
-den nächsten Paketen.
+## Funktionen
 
-Paket 2/3: Eingangskontrolle mit stfc.pro-Abgleich, Status-Rollen (Kontextmenü „Status ändern“, `/status`).
+- **Eingangskontrolle:** Button „Namen ändern“ → Nickname `[ALLY] Spielname`. Bei GFK wird der Name mit der
+  Mitgliederliste auf [stfc.pro](https://stfc.pro) abgeglichen und die Spieler-ID gemerkt; spätere Namensänderungen
+  im Spiel zieht der Bot täglich nach. Neue Leute werden Gast, die Führung bekommt eine Karte mit Buttons.
+- **Status-Rollen:** Gast, Freund, Mitglied, Führung - vergeben über Buttons, Kontextmenü „Status ändern“ oder
+  `/status`, ohne dass die Führung selbst „Rollen verwalten“ braucht. Mitglied/Führung nur mit geprüftem Kürzel.
+- **Meldungen:** Formular mit Kategorie, Allianz, Spieler, Beschreibung und Screenshots → Beitrag im Vorfallforum,
+  „In Bearbeitung“ / „Erledigt“ für die Führung, automatisches Aufräumen, Statistik je Allianz im Logbuch.
+- **Events:** allianzweit (mit Discord-Event und Anmeldung) oder privat (eingeladene Teilnehmer, privater Thread),
+  Sprachkanal 1 Stunde vorher, Erinnerung, Aufräumen nach dem Ende.
+- **Server-Logs:** Beitritte/Austritte, Rollen-, Nickname-, Kanal- und Rollenänderungen, bearbeitete und gelöschte
+  Nachrichten (alter Text nur im Arbeitsspeicher).
 
-Meldungen (Vorfallforum mit Tags und „Erledigt“) und Events (allianzweit/privat, Sprachkanal 1 h vorher,
-Erinnerungen im Thread, Aufräumen nach dem Ende).
+## Einrichten
 
-Server-Logs (ersetzen SCNX): user-, rollen-, kanal-, msg-log, je Kanal über `/setup logs`, abschalten mit
-`/setup log_aus`. Der msg-log merkt sich Nachrichten nur im Arbeitsspeicher (Standard 7 Tage, `msg_tage` 1–30).
+1. Discord-Anwendung anlegen, unter *Bot* die Intents **Server Members** und **Message Content** einschalten (Message
+   Content nur für den msg-log; ohne ihn startet der Bot trotzdem).
+2. Bot einladen. Rechte: Kanäle sehen, Nachrichten senden, Links einbetten, Dateien anhängen, Verlauf lesen, Alle
+   erwähnen, Nicknames verwalten, Rollen verwalten, Events erstellen und verwalten, öffentliche und private Threads
+   erstellen, Threads verwalten, in Threads schreiben, Audit-Log anzeigen, Verbinden, Sprechen. **Kanäle verwalten**
+   nur auf der Event-Kategorie (und am Vorfallforum, falls der Bot Tags anlegen soll). Die Bot-Rolle muss über den
+   Status-Rollen stehen.
+3. Starten (Docker):
+   ```
+   docker build -t gfk-bot .
+   docker run -d --name gfk-bot -e DISCORD_TOKEN=... -e GFK_GUILD=<Server-ID> -v $PWD/data:/app/data gfk-bot
+   ```
+   `GFK_GUILD` meldet die Befehle sofort auf diesem Server an (sonst global, das kann bis zu einer Stunde dauern).
+   `GFK_DB_FILE` ändert den Ort der SQLite-Datenbank (Standard `/app/data/gfk.db`).
+4. Auf dem Server als Admin: `/setup rollen`, `/setup kanäle`, `/setup logs`, dann `/setup anzeigen` (zeigt fehlende
+   Einstellungen und Rechte) und `/setup panels` (postet die festen Nachrichten mit Buttons). Bestehende Mitglieder
+   mit `[GFK]` im Nickname einmalig mit `/setup abgleich` verknüpfen.
 
-## Aufbau
+Für eine andere Allianz: `ALLIANCE_ID` und `ALLIANCE_TAG` in `gfk/stfc.py` anpassen. stfc.pro wird höflich genutzt:
+nur die normale Allianzseite, höchstens alle 15 Minuten, eigener User-Agent; die letzte Liste wird gespeichert.
+
+## Entwicklung
+
+- Unit-Tests (ohne Netz): `docker run --rm --network none -v $PWD:/src:ro -w /src gfk-bot python -m unittest
+  discover -s tests`
+- Test-Server (nur mit `GFK_DEV_GUILD`, nie auf dem echten Server): `python -m gfk.devtools seed|panels|status`
+  richtet Kanäle und Rollen ein; `python -m gfk.devtools selftest` spielt Meldung und Events gegen Discord durch
+  (laufenden Bot vorher stoppen).
 
 | Pfad | Inhalt |
 |---|---|
 | `gfk/main.py` | Start, Lebenszeichen (Docker-Healthcheck), Fehlerbehandlung, Anmeldung der Befehle |
-| `gfk/db.py` | SQLite (`/app/data/gfk.db`), Tabellen laut Design |
-| `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss, und Prüfungen (Hierarchie, Reihenfolge) |
-| `gfk/cogs/setup.py` | `/setup` |
-| `gfk/cogs/onboarding.py`, `roles.py` | Eingangskontrolle, Status-Rollen |
-| `gfk/cogs/logs.py`, `gfk/logfmt.py` | Server-Logs, Vergleiche und Nachrichten-Zwischenspeicher |
-| `gfk/cogs/reports.py` | Meldungen ins Vorfallforum |
+| `gfk/db.py` | SQLite |
+| `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss, und Prüfungen |
+| `gfk/cogs/setup.py` | `/setup`, feste Nachrichten, Info für die Führung |
+| `gfk/cogs/onboarding.py`, `roles.py` | Eingangskontrolle, Status-Rollen, Abgleich mit stfc.pro |
+| `gfk/cogs/reports.py`, `gfk/reportstats.py` | Meldungen, Aufräumen, Statistik |
 | `gfk/cogs/events.py`, `gfk/eventlogic.py` | Eventplanung; Zeit-Eingaben und Fälligkeiten ohne Discord |
-| `gfk/util.py` | Fehlerbehandlung für Buttons und Formulare |
-| `gfk/views/panels.py` | feste Nachrichten mit Buttons |
-| `gfk/devtools.py` | nur Test-Server: Kanäle zuordnen, Rollen anlegen, Prüfung, Panels posten |
-| `gfk/texts.py` | Texte (Deutsch) |
+| `gfk/cogs/logs.py`, `gfk/logfmt.py` | Server-Logs |
+| `gfk/stfc.py`, `gfk/names.py` | stfc.pro-Liste, Nicknames und Status-Regeln |
+| `gfk/texts.py` | alle Texte (Deutsch) |
+| `gfk/devtools.py` | Werkzeuge nur für den Test-Server |
 
-## Betrieb (auf dem Oracle-Server, Ordner `~/discord-bot`)
+## Lizenz
 
-- Test-Bot: `docker compose --profile test up -d --build gfk-bot-test` (Token in `.env.gfk-test`, DB `data/gfk-test/`,
-  Befehle sofort auf dem Test-Server über `GFK_DEV_GUILD`)
-- Test-Server einrichten: `docker compose --profile test run --rm gfk-bot-test python -m gfk.devtools seed|panels|status`
-- Selbsttest gegen den Test-Server (Meldung, Events mit vorgespulter Uhr): erst
-  `docker compose --profile test stop gfk-bot-test`, dann `... python -m gfk.devtools selftest`
-- Unit-Tests: `docker run --rm --network none -v $PWD/gfk-bot:/src:ro -w /src <image> python -m unittest discover -s tests`
-- Der Live-Dienst `gfk-bot` (`.env.gfk`, `data/gfk/`) kommt zum Live-Gang dazu.
-
-## Rechte des Bots
-
-Kanäle sehen, Nachrichten senden, Links einbetten, Dateien anhängen, Nachrichtenverlauf lesen, Nicknames verwalten,
-Rollen verwalten, Events erstellen und verwalten, öffentliche und private Threads erstellen, Threads verwalten, in
-Threads schreiben, Audit-Log anzeigen (wer etwas geändert hat). **Kanäle verwalten nur auf der Event-Kategorie.**
-Die Log-Kanäle muss der Bot sehen und beschreiben können. Intents: Server Members, Message Content (nur für den
-msg-log; ist er im Developer Portal aus, startet der Bot ohne ihn und `/setup anzeigen` weist darauf hin). Die
-Bot-Rolle muss über Führung, Mitglied, Freund und Gast stehen.
+[GNU Affero General Public License v3.0](LICENSE). Wer den Bot verändert und für andere betreibt, muss den
+geänderten Quellcode den Nutzern zugänglich machen.
