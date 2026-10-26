@@ -3,7 +3,8 @@ GFK-Bot - Start.
 
     python -m gfk.main
 
-Umgebung: DISCORD_TOKEN (Pflicht), GFK_DEV_GUILD (optional: Server-ID, auf dem die Befehle sofort erscheinen -
+Umgebung: DISCORD_TOKEN (Pflicht), GFK_GUILD (Live) bzw. GFK_DEV_GUILD (Test-Server; nur damit läuft auch
+gfk.devtools) - optional: Server-ID, auf dem die Befehle sofort erscheinen -
 für den Test-Bot; ohne die Variable werden sie global angemeldet, das kann bis zu einer Stunde dauern),
 GFK_DB_FILE (optional).
 """
@@ -45,7 +46,7 @@ class GfkBot(commands.Bot):
         for cog in COGS:
             await self.load_extension(cog)
         self.tree.on_error = on_app_command_error
-        dev_guild = os.environ.get("GFK_DEV_GUILD", "").strip()
+        dev_guild = (os.environ.get("GFK_GUILD") or os.environ.get("GFK_DEV_GUILD") or "").strip()
         if dev_guild:
             self.tree.copy_global_to(guild=discord.Object(int(dev_guild)))
         if _synced:
