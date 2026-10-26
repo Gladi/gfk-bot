@@ -4,9 +4,8 @@ GFK-Bot - Start.
     python -m gfk.main
 
 Umgebung: DISCORD_TOKEN (Pflicht), GFK_GUILD (Live) bzw. GFK_DEV_GUILD (Test-Server; nur damit läuft auch
-gfk.devtools) - optional: Server-ID, auf dem die Befehle sofort erscheinen -
-für den Test-Bot; ohne die Variable werden sie global angemeldet, das kann bis zu einer Stunde dauern),
-GFK_DB_FILE (optional).
+gfk.devtools) - optional: Server-ID, auf dem die Befehle sofort erscheinen; ohne werden sie global angemeldet, das
+kann bis zu einer Stunde dauern. GFK_DB_FILE (optional).
 """
 import logging
 import math
