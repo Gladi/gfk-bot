@@ -212,5 +212,27 @@ class EventDbTests(unittest.TestCase):
         self.assertEqual(db.get_report_sync(rid)["closed_by"], 2)
 
 
+class _Tag:
+    def __init__(self, name):
+        self.name = name
+
+
+class _Forum:
+    def __init__(self, names):
+        self.available_tags = [_Tag(n) for n in names]
+
+
+class ForumTagTests(unittest.TestCase):
+    def test_existing_tags_are_reused(self):
+        forum = _Forum(["Neue Meldung", "0-Node", "In Bearbeitung", "Erledigt"])      # wie auf dem GFK-Server
+        self.assertEqual(reports.missing_tags(forum), ["ROE-Verstoß", "Sonstiges"])
+        self.assertEqual([t.name for t in reports.find_tags(forum, ["Null-Node", "Offen"])], ["0-Node", "Neue Meldung"])
+        self.assertEqual([t.name for t in reports.find_tags(forum, ["Erledigt"])], ["Erledigt"])
+
+    def test_own_tags_preferred(self):
+        forum = _Forum(["Null-Node", "0-Node", "Offen"])
+        self.assertEqual([t.name for t in reports.find_tags(forum, ["Null-Node", "Offen"])], ["Null-Node", "Offen"])
+
+
 if __name__ == "__main__":
     unittest.main()

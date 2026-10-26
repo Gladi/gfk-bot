@@ -53,7 +53,7 @@ class GfkBot(commands.Bot):
         elif dev_guild:
             guild = discord.Object(int(dev_guild))
             synced = await self.tree.sync(guild=guild)
-            log.info("%d Befehle auf dem Test-Server %s angemeldet.", len(synced), dev_guild)
+            log.info("%d Befehle auf dem Server %s angemeldet.", len(synced), dev_guild)
         else:
             synced = await self.tree.sync()
             log.info("%d Befehle global angemeldet.", len(synced))

@@ -24,6 +24,19 @@ MSG_DAYS_DEFAULT, MSG_DAYS_MIN, MSG_DAYS_MAX = 7, 1, 30
 REPORT_CATEGORIES = {"roe": "ROE-Verstoß", "nullnode": "Null-Node", "sonstiges": "Sonstiges"}
 REPORT_STATUS_TAGS = {"open": "Offen", "done": "Erledigt"}
 REPORT_TAGS = list(REPORT_CATEGORIES.values()) + list(REPORT_STATUS_TAGS.values())
+# Schon vorhandene Forum-Tags, die als Bot-Tag zählen (GFK-Server: "0-Node", "Neue Meldung") - keine Doppelten anlegen
+REPORT_TAG_ALIASES = {"Null-Node": ["0-Node"], "Offen": ["Neue Meldung"]}
+REPORT_CLEARED_ON_DONE = ["In Bearbeitung"]      # von Hand gesetzte Zwischenstände, die "Erledigt" entfernt
+
+
+def tag_names(name: str) -> List[str]:
+    """Ein Bot-Tag und die vorhandenen Tags, die dafür zählen (in dieser Reihenfolge gesucht)."""
+    return [name] + REPORT_TAG_ALIASES.get(name, [])
+
+
+def has_tag(existing: Iterable[str], name: str) -> bool:
+    have = {n.casefold() for n in existing}
+    return any(n.casefold() in have for n in tag_names(name))
 REMINDER_KEY = "erinnerung_minuten"
 REMINDER_DEFAULT, REMINDER_MIN, REMINDER_MAX = 30, 5, 240
 # Rollen, die der Bot selbst vergibt - die Bot-Rolle muss über all diesen stehen

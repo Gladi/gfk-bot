@@ -34,12 +34,17 @@ def report_title(category: str, alliance: Optional[str], player: str, when: dt.d
 
 def find_tags(forum: discord.ForumChannel, wanted: List[str]) -> List[discord.ForumTag]:
     by_name = {tag.name.casefold(): tag for tag in forum.available_tags}
-    return [by_name[w.casefold()] for w in wanted if w.casefold() in by_name]
+    found = []
+    for w in wanted:
+        tag = next((by_name[n.casefold()] for n in st.tag_names(w) if n.casefold() in by_name), None)
+        if tag is not None:
+            found.append(tag)
+    return found
 
 
 def missing_tags(forum: discord.ForumChannel) -> List[str]:
-    have = {tag.name.casefold() for tag in forum.available_tags}
-    return [name for name in ALL_TAGS if name.casefold() not in have]
+    have = [tag.name for tag in forum.available_tags]
+    return [name for name in ALL_TAGS if not st.has_tag(have, name)]
 
 
 async def ensure_tags(guild: discord.Guild, newly_posted: bool = False):
@@ -106,7 +111,8 @@ async def finish_report(message: discord.Message, report_id: int, actor: discord
     if isinstance(thread, discord.Thread):
         await thread.send(t("rep_done_note", user=actor.mention), allowed_mentions=discord.AllowedMentions.none())
         forum = thread.parent
-        tags = [tag for tag in thread.applied_tags if tag.name.casefold() != STATUS_TAGS["open"].casefold()]
+        open_names = {n.casefold() for n in st.tag_names(STATUS_TAGS["open"]) + st.REPORT_CLEARED_ON_DONE}
+        tags = [tag for tag in thread.applied_tags if tag.name.casefold() not in open_names]
         if isinstance(forum, discord.ForumChannel):
             tags += [tag for tag in find_tags(forum, [STATUS_TAGS["done"]]) if tag not in tags]
         try:

@@ -76,8 +76,8 @@ def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: 
         lines.append(t("setup_perm", items=", ".join(perms)))
     forum = _channel(guild, config, "vorfallforum")
     if isinstance(forum, discord.ForumChannel):
-        have = {tag.name.casefold() for tag in forum.available_tags}
-        tags = [n for n in st.REPORT_TAGS if n.casefold() not in have]
+        have = [tag.name for tag in forum.available_tags]
+        tags = [n for n in st.REPORT_TAGS if not st.has_tag(have, n)]
         if tags:
             lines.append(t("setup_forum_tags", items=", ".join(tags)))
     elif forum is not None:
