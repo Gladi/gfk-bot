@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS stfc_roster (
     player_id INTEGER PRIMARY KEY, name TEXT NOT NULL, tag TEXT NOT NULL, rank TEXT NOT NULL,
     fetched_at REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS notices (
+    guild_id INTEGER NOT NULL, user_id INTEGER NOT NULL, message_id INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, message_id)
+);
 CREATE TABLE IF NOT EXISTS members (
     guild_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
     alliance TEXT NOT NULL, game_name TEXT NOT NULL, stfc_player_id INTEGER, nick_synced_at TEXT,
@@ -293,3 +297,23 @@ active_events = _async(active_events_sync)
 event_by_voice = _async(event_by_voice_sync)
 set_participant = _async(set_participant_sync)
 participants = _async(participants_sync)
+
+
+# ----------------- Karten in "Verwaltung" (neuer Gast, Kürzel entfernt) - verschwinden, sobald entschieden -----------------
+def add_notice_sync(guild_id: int, user_id: int, message_id: int):
+    with _conn() as conn:
+        conn.execute("INSERT OR IGNORE INTO notices (guild_id, user_id, message_id) VALUES (?, ?, ?)",
+                     (guild_id, user_id, message_id))
+
+
+def pop_notices_sync(guild_id: int, user_id: int):
+    """Nachrichten-IDs der Karten zu einer Person - und aus der Tabelle entfernen."""
+    with _conn() as conn:
+        ids = [r[0] for r in conn.execute("SELECT message_id FROM notices WHERE guild_id = ? AND user_id = ?",
+                                          (guild_id, user_id))]
+        conn.execute("DELETE FROM notices WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+    return ids
+
+
+add_notice = _async(add_notice_sync)
+pop_notices = _async(pop_notices_sync)

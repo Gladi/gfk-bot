@@ -176,7 +176,6 @@ T = {
     "verw_stfc_missing": "❔ Nicht in der GFK-Liste gefunden",
     "verw_alliance": "Allianz",
     "verw_no_ally": "ohne Allianz",
-    "verw_status_set": "➡️ {target} ist jetzt **{role}** (durch {actor})",
     "status_denied": "🔒 Das darfst du nicht. Freund und Mitglied vergibt die Führung, Führung nur der Admiral.",
     "status_gone": "⚠️ Die Person ist nicht mehr auf dem Server.",
     "status_not_self": "🔒 Deinen eigenen Status und den von Bots kannst du hier nicht ändern.",
@@ -198,6 +197,25 @@ T = {
     "name_change_self": "✏️ {user} heißt im Spiel jetzt **{new}** (vorher **{old}**) - selbst über „Namen ändern“ "
                         "eingetragen.",
     "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste.",
+    "verw_info_title": "📋 Rollenvergabe - so geht's",
+    "verw_info_text": "**1. Neue Leute**\nSie tragen in {eingang} über „Namen ändern“ Kürzel und Spielnamen ein und "
+                      "werden automatisch **Gast**. Hier erscheint dann eine Karte mit Buttons.\n\n"
+                      "**2. Status vergeben**\nAuf der Karte **Freund**, **Mitglied** oder **Führung** anklicken. "
+                      "Später jederzeit: Rechtsklick auf die Person (Handy: lange tippen) → **Apps** → **Status "
+                      "ändern**, oder `/status`. Sobald jemand Freund, Mitglied oder Führung ist, verschwindet die "
+                      "Karte von selbst.\n\n"
+                      "**3. Wer darf was**\n• Führung: Gast, Freund, Mitglied\n• Admiral: zusätzlich Führung\n"
+                      "• Niemand ändert sich selbst, den Admiral ändert der Bot nie.\n\n"
+                      "**4. Mitglied und Führung nur mit geprüftem GFK-Kürzel**\nDer Nickname beginnt mit `[GFK]` "
+                      "**und** der Spielname wurde über „Namen ändern“ auf stfc.pro gefunden. Sonst gibt es nur "
+                      "**Freund**. Wer noch nicht verknüpft ist, steht in der Liste darunter.\n\n"
+                      "**5. Kürzel entfernt**\nNimmt jemand `[GFK]` aus dem Nickname, wird er automatisch **Gast** "
+                      "und hier erscheint eine Karte.\n\n"
+                      "Jede Änderung steht im user-log.",
+    "verw_unlinked_title": "🔗 Noch nicht mit stfc.pro verknüpft ({n})",
+    "verw_unlinked_none": "✅ Alle [GFK]-Mitglieder sind verknüpft.",
+    "verw_unlinked_what": "Was tun?",
+    "verw_unlinked_footer": "Aktualisiert sich automatisch",
     "verw_link_title": "🔗 Abgleich der Mitglieder mit stfc.pro",
     "verw_link_summary": "{linked} verknüpft, {already} waren schon verknüpft, {missing} nicht in der GFK-Liste gefunden. "
                          "Rollen und Nicknames wurden nicht verändert.",
@@ -207,7 +225,6 @@ T = {
     "verw_link_untagged": "Mitglied oder Führung ohne [GFK] im Nickname",
     "verw_link_untagged_hint": "Nur zur Info - der Bot ändert nichts. Ändert jemand davon seinen Nickname, ohne [GFK] "
                                "voranzustellen, wird er automatisch Gast.",
-    "sync_linked": "🔗 Abgleich mit stfc.pro: {user} steht jetzt in der GFK-Liste ({name}, {rank}) und ist verknüpft.",
 }
 
 

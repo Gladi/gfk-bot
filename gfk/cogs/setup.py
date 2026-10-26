@@ -208,16 +208,15 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
 
     @app_commands.command(name="abgleich", description="Bestehende [GFK]-Mitglieder einmalig mit stfc.pro verknüpfen")
     async def link(self, interaction: discord.Interaction):
-        from gfk.cogs.onboarding import link_existing, link_report
+        from gfk.cogs.onboarding import link_existing, link_report, update_unlinked_list
         await interaction.response.defer(ephemeral=True, thinking=True)
         roster = await self.bot.roster.get(self.bot.web, max_age=0)
         if roster is None:
             await interaction.followup.send(t("name_stfc_down"), ephemeral=True)
             return
         linked, already, missing, untagged = await link_existing(interaction.guild, roster)
-        report = link_report(linked, already, missing, untagged)
-        await interaction.followup.send(embed=report, ephemeral=True)
-        await notify_verwaltung(interaction.guild, embed=report)
+        await interaction.followup.send(embed=link_report(linked, already, missing, untagged), ephemeral=True)
+        await update_unlinked_list(interaction.guild)
 
     @app_commands.command(name="panels", description="Feste Nachrichten (Buttons) posten oder aktualisieren")
     async def panels(self, interaction: discord.Interaction):
@@ -227,6 +226,33 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
             await interaction.followup.send(t("panels_missing", items=", ".join(missing)), ephemeral=True)
         if posted:
             await interaction.followup.send(t("panels_posted", items=", ".join(posted)), ephemeral=True)
+
+
+async def post_info(guild: discord.Guild):
+    """Erklärung der Rollenvergabe in Verwaltung: einmal posten und anpinnen, danach nur noch bearbeiten."""
+    config = await db.get_config(guild.id)
+    channel = _channel(guild, config, "verwaltung")
+    if channel is None:
+        return
+    lobby = _channel(guild, config, "eingang")
+    embed = discord.Embed(title=t("verw_info_title"), color=discord.Color.blurple(),
+                          description=t("verw_info_text", eingang=lobby.mention if lobby else "#eingang"))
+    msg_id = config.get("info_verwaltung")
+    if msg_id:
+        try:
+            await channel.get_partial_message(int(msg_id)).edit(embed=embed)
+            return
+        except discord.NotFound:
+            pass
+    message = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+    try:
+        await message.pin(reason="GFK-Bot: Erklärung der Rollenvergabe")
+        async for notice in channel.history(limit=5):          # Systemhinweis "hat angepinnt" wieder entfernen
+            if notice.type == discord.MessageType.pins_add:
+                await notice.delete()
+    except discord.HTTPException:
+        pass
+    await db.set_config(guild.id, {"info_verwaltung": str(message.id)})
 
 
 async def post_panels(guild: discord.Guild):
@@ -260,6 +286,7 @@ async def post_panels(guild: discord.Guild):
         posted.append(f"#{ch.name}")
     if updates:
         await db.set_config(guild.id, updates)
+    await post_info(guild)
     for kind, hook in list(panels_mod.AFTER_POST.items()):
         try:
             await hook(guild, kind in fresh)

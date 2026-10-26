@@ -208,6 +208,90 @@ class NameChangeTests(unittest.TestCase):
         self.assertIn("Namen ändern", verw.sent[0])
 
 
+class _Msg:
+    def __init__(self, mid):
+        self.id = mid
+
+
+class _Partial:
+    def __init__(self, chan, mid):
+        self.chan, self.id = chan, mid
+
+    async def delete(self):
+        self.chan.deleted.append(self.id)
+
+    async def edit(self, **kwargs):
+        if self.id not in self.chan.existing:
+            import discord
+            raise discord.NotFound(type("R", (), {"status": 404, "reason": "x"})(), "x")
+        self.chan.edited.append(self.id)
+
+
+class _VChan:
+    def __init__(self):
+        self.deleted, self.edited, self.sent, self.existing = [], [], [], set()
+
+    def get_partial_message(self, mid):
+        return _Partial(self, mid)
+
+    async def send(self, text=None, **kwargs):
+        mid = 1000 + len(self.sent)
+        self.sent.append(kwargs.get("embed") or text)
+        self.existing.add(mid)
+        return _Msg(mid)
+
+
+class _VGuild:
+    def __init__(self, gid, chan, members=()):
+        self.id, self.chan, self.members = gid, chan, list(members)
+
+    def get_channel(self, cid):
+        return self.chan
+
+    def get_channel_or_thread(self, cid):
+        return self.chan
+
+
+class VerwaltungTests(unittest.TestCase):
+    def setUp(self):
+        db.init()
+
+    def test_notices_cleared(self):
+        import asyncio
+        from gfk.cogs.onboarding import clear_notices
+        g = 6161
+        db.set_config_sync(g, {st.channel_key("verwaltung"): "1"})
+        db.add_notice_sync(g, 7, 501)
+        db.add_notice_sync(g, 7, 502)
+        db.add_notice_sync(g, 8, 503)
+        chan = _VChan()
+        asyncio.run(clear_notices(_VGuild(g, chan), 7, _Msg(509)))
+        self.assertEqual(sorted(chan.deleted), [501, 502, 509])
+        self.assertEqual(db.pop_notices_sync(g, 7), [])
+        self.assertEqual(db.pop_notices_sync(g, 8), [503])
+
+    def test_unlinked_list_posted_once_then_edited(self):
+        import asyncio
+        from gfk.cogs.onboarding import update_unlinked_list
+        g = 6262
+        db.set_config_sync(g, {st.channel_key("verwaltung"): "1", st.role_key("mitglied"): "500"})
+        db.save_member_sync(g, 1, "GFK", "McRunner", 11)
+        a, b = _Member(1, "[GFK] McRunner"), _Member(2, "[GFK] Unbekannt")
+        b.display_name = "[GFK] Unbekannt"
+        a.display_name = "[GFK] McRunner"
+        chan = _VChan()
+        guild = _VGuild(g, chan, [a, b])
+        asyncio.run(update_unlinked_list(guild))
+        self.assertEqual(len(chan.sent), 1)
+        self.assertIn("(1)", chan.sent[0].title)
+        self.assertIn("Unbekannt", chan.sent[0].description)
+        asyncio.run(update_unlinked_list(guild))                  # nichts geändert -> nichts tun
+        self.assertEqual((len(chan.sent), chan.edited), (1, []))
+        db.save_member_sync(g, 2, "GFK", "Unbekannt", 22)            # jetzt verknüpft -> bearbeiten
+        asyncio.run(update_unlinked_list(guild))
+        self.assertEqual((len(chan.sent), len(chan.edited)), (1, 1))
+
+
 if __name__ == "__main__":
     unittest.main()
 

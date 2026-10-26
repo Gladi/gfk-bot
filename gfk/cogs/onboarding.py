@@ -156,11 +156,85 @@ class StatusButton(discord.ui.DynamicItem[discord.ui.Button],
             return
         await set_status(guild, config, target, self.role, interaction.user)
         await interaction.response.send_message(t("status_done", target=target.mention, role=label), ephemeral=True)
-        if interaction.message and interaction.message.embeds:
-            embed = interaction.message.embeds[0]
-            embed.description = (embed.description or "") + "\n" + t(
-                "verw_status_set", target=target.mention, role=label, actor=interaction.user.mention)
-            await interaction.message.edit(embed=embed)
+        await clear_notices(guild, target.id, interaction.message)
+
+
+DECIDED = {"freund", "mitglied", "fuehrung", "admiral"}     # Status, mit dem eine Karte in Verwaltung erledigt ist
+
+
+async def add_card(guild: discord.Guild, user_id: int, **kwargs):
+    """Karte in Verwaltung posten und merken (verschwindet, sobald die Person einen Status bekommt)."""
+    message = await notify_verwaltung(guild, **kwargs)
+    if message is not None:
+        await db.add_notice(guild.id, user_id, message.id)
+
+
+async def clear_notices(guild: discord.Guild, user_id: int, extra: Optional[discord.Message] = None):
+    """Alle Karten zu einer Person in Verwaltung löschen (extra: die Nachricht mit dem geklickten Button)."""
+    ids = set(await db.pop_notices(guild.id, user_id))
+    if extra is not None:
+        ids.add(extra.id)
+    if not ids:
+        return
+    channel = _verwaltung(guild, await db.get_config(guild.id))
+    for message_id in ids:
+        try:
+            await channel.get_partial_message(message_id).delete()
+        except (discord.HTTPException, AttributeError):
+            pass
+
+
+def _verwaltung(guild: discord.Guild, config: Dict[str, str]):
+    value = config.get(st.channel_key("verwaltung"))
+    return guild.get_channel(int(value)) if value else None
+
+
+def unlinked_embed(missing, untagged) -> discord.Embed:
+    """Liste in Verwaltung: [GFK]-Mitglieder ohne Verknüpfung mit stfc.pro (+ Mitglied/Führung ohne [GFK])."""
+    e = discord.Embed(title=t("verw_unlinked_title", n=len(missing)), color=discord.Color.orange() if missing
+                      else discord.Color.green())
+    e.description = logfmt.clip("\n".join(f"• {m.mention} ({name})" for m, name in missing), 4000) if missing \
+        else t("verw_unlinked_none")
+    if missing:
+        e.add_field(name=t("verw_unlinked_what"), value=t("verw_link_missing_hint"), inline=False)
+    if untagged:
+        e.add_field(name=t("verw_link_untagged"), inline=False,
+                    value=logfmt.clip(" ".join(m.mention for m in untagged) + "\n" + t("verw_link_untagged_hint")))
+    e.set_footer(text=t("verw_unlinked_footer"))
+    e.timestamp = discord.utils.utcnow()
+    return e
+
+
+async def update_unlinked_list(guild: discord.Guild):
+    """Eine Nachricht in Verwaltung, die immer den aktuellen Stand zeigt (nur bei Änderung bearbeitet)."""
+    config = await db.get_config(guild.id)
+    channel = _verwaltung(guild, config)
+    if channel is None:
+        return
+    linked = {row[0] for row in await db.linked_members(guild.id)}
+    missing, untagged = [], []
+    for member in sorted(guild.members, key=lambda m: m.display_name.casefold()):
+        if member.bot:
+            continue
+        if names.tag_of_nick(member.nick) == stfc.ALLIANCE_TAG:
+            if member.id not in linked:
+                missing.append((member, names.NICK_TAG_RE.sub("", member.nick).strip()))
+        elif status_of(member, config) & {"mitglied", "fuehrung"}:
+            untagged.append(member)
+    digest = str(hash((tuple((m.id, n) for m, n in missing), tuple(m.id for m in untagged))))
+    msg_id = config.get("verw_unlinked_msg")
+    if msg_id and config.get("verw_unlinked_hash") == digest:
+        return
+    embed = unlinked_embed(missing, untagged)
+    if msg_id:
+        try:
+            await channel.get_partial_message(int(msg_id)).edit(embed=embed)
+            await db.set_config(guild.id, {"verw_unlinked_hash": digest})
+            return
+        except discord.NotFound:
+            pass
+    message = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+    await db.set_config(guild.id, {"verw_unlinked_msg": str(message.id), "verw_unlinked_hash": digest})
 
 
 def status_view(user_id: int, alliance: Optional[str]) -> discord.ui.View:
@@ -309,7 +383,9 @@ class OnboardingCog(commands.Cog):
                                 else t("verw_stfc_missing"))
             elif not tag:
                 embed.add_field(name=t("verw_alliance"), value=t("verw_no_ally"))
-            await notify_verwaltung(guild, embed=embed, view=status_view(member.id, tag))
+            await add_card(guild, member.id, embed=embed, view=status_view(member.id, tag))
+        if tag == stfc.ALLIANCE_TAG or (before and before[0] == stfc.ALLIANCE_TAG):
+            await update_unlinked_list(guild)
 
     async def demote(self, guild: discord.Guild, config: Dict[str, str], member: discord.Member, status: Set[str],
                      nick: str):
@@ -320,12 +396,18 @@ class OnboardingCog(commands.Cog):
         await set_status(guild, config, member, "gast", self.bot.user)
         embed = discord.Embed(title=t("verw_demoted_title"), color=discord.Color.orange(),
                               description=t("verw_demoted", user=member.mention, nick=nick, old=old))
-        await notify_verwaltung(guild, embed=embed, view=status_view(member.id, names.tag_of_nick(nick)))
+        await add_card(guild, member.id, embed=embed, view=status_view(member.id, names.tag_of_nick(nick)))
+        await update_unlinked_list(guild)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
-        """Nickname direkt in Discord geändert: ohne [GFK] verliert Mitglied/Führung den Status."""
-        if before.nick == after.nick or after.bot or (after.guild.id, after.id) in self._own_renames:
+        """Status vergeben (egal wie) -> Karte in Verwaltung weg. Nickname direkt in Discord geändert: ohne [GFK]
+        verliert Mitglied/Führung den Status."""
+        if after.bot:
+            return
+        if before.roles != after.roles and status_of(after, await db.get_config(after.guild.id)) & DECIDED:
+            await clear_notices(after.guild, after.id)
+        if before.nick == after.nick or (after.guild.id, after.id) in self._own_renames:
             return
         config = await db.get_config(after.guild.id)
         status = status_of(after, config)
@@ -340,6 +422,8 @@ class OnboardingCog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         await db.delete_member(member.guild.id, member.id)   # Spieler-ID nur, solange jemand auf dem Server ist
+        await clear_notices(member.guild, member.id)
+        await update_unlinked_list(member.guild)
 
     # ----------------- täglicher Abgleich mit stfc.pro -----------------
     @tasks.loop(hours=SYNC_HOURS)
@@ -359,6 +443,7 @@ class OnboardingCog(commands.Cog):
         rows = await db.linked_members(guild.id)
         unlinked = await db.unlinked_gfk_members(guild.id, stfc.ALLIANCE_TAG)
         if not rows and not unlinked:
+            await update_unlinked_list(guild)
             return
         roster = await self.bot.roster.get(self.bot.web, max_age=3600)
         if roster is None:
@@ -367,8 +452,6 @@ class OnboardingCog(commands.Cog):
             member, player = guild.get_member(user_id), stfc.find(roster, game_name)
             if member is not None and player is not None:
                 await db.save_member(guild.id, user_id, stfc.ALLIANCE_TAG, player.name, player.player_id)
-                await notify_verwaltung(guild, t("sync_linked", user=member.mention, name=player.name,
-                                                 rank=player.rank or "?"))
         for user_id, alliance, game_name, player_id in rows:
             member = guild.get_member(user_id)
             if member is None:
@@ -388,6 +471,7 @@ class OnboardingCog(commands.Cog):
                 log.info("Nickname von %s nicht änderbar", user_id)
             await db.save_member(guild.id, user_id, alliance, player.name, player_id)
             await post_name_change(guild, member, game_name, player.name, "sync")
+        await update_unlinked_list(guild)
 
 
 async def setup(bot: commands.Bot):

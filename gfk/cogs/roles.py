@@ -11,7 +11,6 @@ from discord.ext import commands
 
 from gfk import db, names, settings as st, stfc
 from gfk.cogs.onboarding import alliance_for_status, set_status, status_of
-from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
 from gfk.util import SafeView
 
@@ -41,8 +40,6 @@ class ChoiceView(SafeView):
             label = st.ROLE_KEYS[role]
             await interaction.response.edit_message(content=t("status_done", target=target.mention, role=label),
                                                     view=None)
-            await notify_verwaltung(guild, t("verw_status_set", target=target.mention, role=label,
-                                             actor=interaction.user.mention))
             self.stop()
         return callback
 
