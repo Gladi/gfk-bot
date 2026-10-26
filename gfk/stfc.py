@@ -67,8 +67,8 @@ def parse_roster(html: str) -> Dict[int, Player]:
 
 def normalize(name: str) -> str:
     """Für den Vergleich: klein, ohne Akzente, ohne Leer- und Sonderzeichen."""
-    name = unicodedata.normalize("NFKD", name)
-    return "".join(c for c in name.lower() if c.isalnum())
+    key = "".join(c for c in unicodedata.normalize("NFKD", name).lower() if c.isalnum())
+    return key or "".join(name.casefold().split())      # Namen nur aus Sonderzeichen ("★★") nicht verlieren
 
 
 def find(players: Dict[int, Player], name: str) -> Optional[Player]:

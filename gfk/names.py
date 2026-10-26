@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional, Set, Tuple
 
 MAX_NICK = 32                    # Discord-Grenze für Server-Nicknames
 MAX_TAG = 6
-TAG_RE = re.compile(r"^[A-Za-z0-9]{1,6}$")
+TAG_RE = re.compile(r"^[^\W_]{1,6}$")   # Buchstaben/Ziffern, auch Ø, Ä …
 
 
 def clean_tag(raw: str) -> Optional[str]:
@@ -40,7 +40,7 @@ def allowed_for_alliance(target: str, alliance: Optional[str], gfk_tag: str = "G
     return target not in GFK_ONLY or (alliance or "").upper() == gfk_tag
 
 
-NICK_TAG_RE = re.compile(r"^\[([A-Za-z0-9]{1,6})\]\s*")
+NICK_TAG_RE = re.compile(r"^\[([^\W_]{1,6})\]\s*")
 
 
 def tag_of_nick(nick: Optional[str]) -> Optional[str]:

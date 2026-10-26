@@ -292,6 +292,25 @@ class VerwaltungTests(unittest.TestCase):
         self.assertEqual((len(chan.sent), len(chan.edited)), (1, 1))
 
 
+class SpecialCharacterTests(unittest.TestCase):
+    def test_tags_with_special_letters(self):
+        self.assertEqual(names.clean_tag("[børg]"), "BØRG")
+        self.assertEqual(names.tag_of_nick("[BØRG] Name"), "BØRG")
+        self.assertEqual(names.nickname("BØRG", "Ünal"), "[BØRG] Ünal")
+        for bad in ("G_K", "A B", "★"):
+            with self.assertRaises(ValueError):
+                names.clean_tag(bad)
+
+    def test_names_with_symbols(self):
+        roster = {1: stfc.Player(1, "★Nova★", "GFK", ""), 2: stfc.Player(2, "★★", "GFK", ""),
+                  3: stfc.Player(3, "Ëlla Star", "GFK", "")}
+        self.assertEqual(stfc.find(roster, "★nova★").player_id, 1)
+        self.assertEqual(stfc.find(roster, "Nova").player_id, 1)          # Sonderzeichen zählen beim Vergleich nicht
+        self.assertEqual(stfc.find(roster, "★★").player_id, 2)            # Name nur aus Symbolen
+        self.assertEqual(stfc.find(roster, "ella  star").player_id, 3)
+        self.assertIsNone(stfc.find(roster, "☆☆"))
+
+
 if __name__ == "__main__":
     unittest.main()
 
