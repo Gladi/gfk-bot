@@ -59,7 +59,7 @@ class LogsCog(commands.Cog):
         Person es selbst war)."""
         if not guild.me.guild_permissions.view_audit_log:
             return ""
-        actions = actions if isinstance(actions, (list, tuple)) else [actions]
+        actions = actions if isinstance(actions, list) else [actions]   # AuditLogAction selbst ist ein Tupel!
         now = discord.utils.utcnow()
         try:
             for action in actions:

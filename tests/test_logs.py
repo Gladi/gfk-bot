@@ -88,5 +88,42 @@ class LogSettingsTests(unittest.TestCase):
                 self.assertIn(key, T, f"{path}: {key}")
 
 
+class ActorLookupTests(unittest.TestCase):
+    """Regression: eine einzelne AuditLogAction darf nicht als Liste mehrerer Aktionen behandelt werden."""
+
+    def test_single_and_multiple_actions(self):
+        import asyncio
+        import datetime
+        import discord
+        from gfk.cogs.logs import LogsCog
+
+        asked = []
+        now = discord.utils.utcnow()
+
+        class Entry:
+            def __init__(self, target_id, user):
+                self.target = type("T", (), {"id": target_id})()
+                self.user, self.reason, self.created_at = user, None, now - datetime.timedelta(seconds=2)
+
+        class Guild:
+            me = type("Me", (), {"guild_permissions": discord.Permissions(view_audit_log=True)})()
+
+            def audit_logs(self, limit, action):
+                assert isinstance(action, discord.AuditLogAction), action
+                asked.append(action)
+
+                async def gen():
+                    if action == discord.AuditLogAction.member_update:
+                        yield Entry(5, type("U", (), {"id": 9, "mention": "<@9>"})())
+                return gen()
+
+        cog = LogsCog.__new__(LogsCog)
+        cog.bot = type("B", (), {"user": type("U", (), {"id": 1})()})()
+        A = discord.AuditLogAction
+        self.assertIn("<@9>", asyncio.run(cog._actor(Guild(), A.member_update, 5)))
+        self.assertEqual(asyncio.run(cog._actor(Guild(), [A.channel_update, A.overwrite_update], 5)), "")
+        self.assertEqual(asked, [A.member_update, A.channel_update, A.overwrite_update])
+
+
 if __name__ == "__main__":
     unittest.main()
