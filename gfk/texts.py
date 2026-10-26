@@ -220,6 +220,16 @@ T = {
                       "**5. Kürzel entfernt**\nNimmt jemand `[GFK]` aus dem Nickname, wird er automatisch **Gast** "
                       "und hier erscheint eine Karte.\n\n"
                       "Jede Änderung steht im user-log.",
+    "verw_reports_title": "🚨 Vorfälle - so geht's",
+    "verw_reports_text": "**Neue Meldung** (außer 0-Node): Wer sich kümmert, klickt im Beitrag **🔵 In Bearbeitung** - "
+                         "dann sehen alle, wer dran ist. Fertig? **✅ Erledigt** - der Beitrag wird archiviert.\n\n"
+                         "**0-Node** sind nur Nachweise: keine Buttons, nach **{null_days} Tagen** automatisch "
+                         "gelöscht.\n\n"
+                         "**Aufräumen** in {forum}: Erledigte Beiträge verschwinden nach **{done_days} Tagen** ohne "
+                         "Aktivität. Angepinnte Beiträge bleiben immer.\n\n"
+                         "**Statistik**: Wer wie oft gemeldet wurde, steht in {stats} - je Allianz eine Tabelle, "
+                         "aktualisiert sich automatisch.",
+    "verw_reports_no_stats": "der Vorfall-Statistik im Logbuch",
     "verw_unlinked_title": "🔗 Noch nicht mit stfc.pro verknüpft ({n})",
     "verw_unlinked_none": "✅ Alle [GFK]-Mitglieder sind verknüpft.",
     "verw_unlinked_what": "Was tun?",

@@ -232,24 +232,29 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
 
 
 async def post_info(guild: discord.Guild):
-    """Erklärung der Rollenvergabe in Verwaltung: einmal posten und anpinnen, danach nur noch bearbeiten."""
+    """Erklärung für die Führung in Verwaltung (Rollenvergabe, Vorfälle): einmal posten und anpinnen, danach nur noch
+    bearbeiten."""
     config = await db.get_config(guild.id)
     channel = _channel(guild, config, "verwaltung")
     if channel is None:
         return
-    lobby = _channel(guild, config, "eingang")
-    embed = discord.Embed(title=t("verw_info_title"), color=discord.Color.blurple(),
-                          description=t("verw_info_text", eingang=lobby.mention if lobby else "#eingang"))
+    lobby, forum = _channel(guild, config, "eingang"), _channel(guild, config, "vorfallforum")
+    stats = f"<#{config['stats_thread']}>" if config.get("stats_thread") else t("verw_reports_no_stats")
+    embeds = [discord.Embed(title=t("verw_info_title"), color=discord.Color.blurple(),
+                            description=t("verw_info_text", eingang=lobby.mention if lobby else "#eingang")),
+              discord.Embed(title=t("verw_reports_title"), color=discord.Color.red(), description=t(
+                  "verw_reports_text", forum=forum.mention if forum else "#vorfälle", stats=stats,
+                  done_days=st.REPORT_DONE_DAYS, null_days=st.REPORT_NULLNODE_DAYS))]
     msg_id = config.get("info_verwaltung")
     if msg_id:
         try:
-            await channel.get_partial_message(int(msg_id)).edit(embed=embed)
+            await channel.get_partial_message(int(msg_id)).edit(embeds=embeds)
             return
         except discord.NotFound:
             pass
-    message = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+    message = await channel.send(embeds=embeds, allowed_mentions=discord.AllowedMentions.none())
     try:
-        await message.pin(reason="GFK-Bot: Erklärung der Rollenvergabe")
+        await message.pin(reason="GFK-Bot: Erklärung für die Führung")
         async for notice in channel.history(limit=5):          # Systemhinweis "hat angepinnt" wieder entfernen
             if notice.type == discord.MessageType.pins_add:
                 await notice.delete()
