@@ -193,7 +193,10 @@ T = {
                        "Button „Namen ändern“ mit Kürzel GFK eintragen lassen.",
     "status_done": "✅ {target} ist jetzt **{role}**.",
     "status_already": "ℹ️ {target} ist schon **{role}**.",
-    "sync_renamed": "✏️ Abgleich mit stfc.pro: {user} heißt jetzt **{nick}** (vorher {old}).",
+    "name_change_sync": "✏️ {user} heißt im Spiel jetzt **{new}** (vorher **{old}**) - automatisch erkannt über "
+                        "stfc.pro, Nickname angepasst.",
+    "name_change_self": "✏️ {user} heißt im Spiel jetzt **{new}** (vorher **{old}**) - selbst über „Namen ändern“ "
+                        "eingetragen.",
     "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste.",
     "verw_link_title": "🔗 Abgleich der Mitglieder mit stfc.pro",
     "verw_link_summary": "{linked} verknüpft, {already} waren schon verknüpft, {missing} nicht in der GFK-Liste gefunden. "

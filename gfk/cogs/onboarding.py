@@ -186,6 +186,29 @@ async def set_status(guild: discord.Guild, config: Dict[str, str], member: disco
     await db.log_role_change(guild.id, actor.id, member.id, ",".join(sorted(current)) or "-", target)
 
 
+# ----------------- Spielname geändert -> Eintrag in "Namensänderungen" -----------------
+async def post_name_change(guild: discord.Guild, member: discord.Member, old: str, new: str, how: str):
+    """how: "sync" (vom täglichen Abgleich erkannt) oder "self" (über "Namen ändern"). Ohne eingestellten Beitrag
+    oder wenn er nicht erreichbar ist: Nachricht an die Verwaltung wie bisher."""
+    config = await db.get_config(guild.id)
+    text = t(f"name_change_{how}", user=member.mention, old=old, new=new)
+    value = config.get(st.channel_key("namen_log"))
+    if value:
+        target = guild.get_channel_or_thread(int(value))
+        if target is None:
+            try:
+                target = await guild.fetch_channel(int(value))       # archivierter Forenbeitrag
+            except discord.HTTPException:
+                target = None
+        if target is not None:
+            try:
+                await target.send(text, allowed_mentions=discord.AllowedMentions.none())
+                return
+            except discord.HTTPException as exc:
+                log.warning("Namensänderungen nicht beschreibbar (%s): %s", guild.id, exc)
+    await notify_verwaltung(guild, text)
+
+
 # ----------------- einmaliger Abgleich der Bestandsmitglieder -----------------
 async def link_existing(guild: discord.Guild, roster: Dict[int, stfc.Player]):
     """Wer schon "[GFK] Name" heißt, aber nie "Namen ändern" benutzt hat: mit stfc.pro verknüpfen. Rollen und Nicknames
@@ -271,7 +294,10 @@ class OnboardingCog(commands.Cog):
         elif names.loses_gfk_status(status, tag, stfc.ALLIANCE_TAG):
             await self.demote(guild, config, member, status, nick)
             lines.append(t("name_demoted"))
+        before = await db.get_member(guild.id, member.id)
         await db.save_member(guild.id, member.id, tag or "", name, player.player_id if player else None)
+        if player and before and before[2] == player.player_id and before[1] != player.name:
+            await post_name_change(guild, member, before[1], player.name, "self")   # gleicher Spieler, neuer Name
         if note:
             lines.append(note)
         await _reply(interaction, "\n".join(lines))
@@ -361,7 +387,7 @@ class OnboardingCog(commands.Cog):
             except discord.Forbidden:
                 log.info("Nickname von %s nicht änderbar", user_id)
             await db.save_member(guild.id, user_id, alliance, player.name, player_id)
-            await notify_verwaltung(guild, t("sync_renamed", user=member.mention, nick=nick, old=game_name))
+            await post_name_change(guild, member, game_name, player.name, "sync")
 
 
 async def setup(bot: commands.Bot):

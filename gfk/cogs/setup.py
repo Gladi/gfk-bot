@@ -27,6 +27,7 @@ CHANNEL_PERMS = {
     "event_kategorie": ["view_channel", "manage_channels", "connect", "speak"],
     "verwaltung": ["view_channel", "send_messages", "embed_links"],
     "eingang_info": ["view_channel", "send_messages", "embed_links"],
+    "namen_log": ["view_channel", "send_messages_in_threads"],
 }
 CHANNEL_LABELS = {**st.CHANNEL_KEYS, **st.OPTIONAL_CHANNEL_KEYS}
 GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
@@ -40,7 +41,7 @@ def _role(guild: discord.Guild, config: Dict[str, str], key: str) -> Optional[di
 
 def _channel(guild: discord.Guild, config: Dict[str, str], key: str):
     value = config.get(st.channel_key(key))
-    return guild.get_channel(int(value)) if value else None
+    return guild.get_channel_or_thread(int(value)) if value else None   # auch Threads/Forenbeiträge
 
 
 def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: Optional[bool] = None) -> List[str]:
@@ -138,16 +139,20 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         await self._save(interaction, values, labels)
 
     @app_commands.command(name="kanäle", description="Kanäle des Bots festlegen")
-    @app_commands.describe(namen_zusatz="Optional: weiterer Kanal mit der Nachricht „Namen ändern“")
+    @app_commands.describe(namen_zusatz="Optional: weiterer Kanal mit der Nachricht „Namen ändern“",
+                           namensaenderungen="Optional: Thread/Forenbeitrag für geänderte Spielnamen (sonst Verwaltung)")
+    @app_commands.rename(namensaenderungen="namensänderungen")
     async def channels(self, interaction: discord.Interaction, eingang: Optional[discord.TextChannel] = None,
                        meldungen: Optional[discord.TextChannel] = None,
                        vorfallforum: Optional[discord.ForumChannel] = None,
                        events: Optional[discord.TextChannel] = None,
                        event_kategorie: Optional[discord.CategoryChannel] = None,
                        verwaltung: Optional[discord.TextChannel] = None,
-                       namen_zusatz: Optional[discord.TextChannel] = None):
+                       namen_zusatz: Optional[discord.TextChannel] = None,
+                       namensaenderungen: Optional[discord.Thread] = None):
         given = {"eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
-                 "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz}
+                 "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz,
+                 "namen_log": namensaenderungen}
         values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
         labels = [f"{CHANNEL_LABELS[k]} = #{c.name}" for k, c in given.items() if c is not None]
         await self._save(interaction, values, labels)

@@ -168,6 +168,46 @@ class LinkExistingTests(unittest.TestCase):
         self.assertEqual(len(embed.fields), 2)
 
 
+class _Target:
+    def __init__(self):
+        self.sent = []
+
+    async def send(self, text=None, **kwargs):
+        self.sent.append(text)
+
+
+class _ChanGuild:
+    def __init__(self, gid, channels):
+        self.id, self.channels = gid, channels
+
+    def get_channel_or_thread(self, cid):
+        return self.channels.get(cid)
+
+    async def fetch_channel(self, cid):
+        import discord
+        raise discord.NotFound(type("R", (), {"status": 404, "reason": "x"})(), "x")
+
+
+class NameChangeTests(unittest.TestCase):
+    def test_goes_to_thread_or_falls_back(self):
+        import asyncio
+        from gfk.cogs.onboarding import post_name_change
+        db.init()
+        g, thread, verw = 5151, _Target(), _Target()
+        guild = _ChanGuild(g, {11: thread, 22: verw})
+        member = _Member(1, "[GFK] Neu")
+        db.set_config_sync(g, {st.channel_key("verwaltung"): "22", st.channel_key("namen_log"): "11"})
+        asyncio.run(post_name_change(guild, member, "Alt", "Neu", "sync"))
+        self.assertEqual(len(thread.sent), 1)
+        self.assertIn("**Neu**", thread.sent[0])
+        self.assertIn("**Alt**", thread.sent[0])
+        self.assertEqual(verw.sent, [])
+        db.set_config_sync(g, {st.channel_key("namen_log"): "99"})        # Beitrag gelöscht -> Verwaltung
+        asyncio.run(post_name_change(guild, member, "Alt", "Neu", "self"))
+        self.assertEqual(len(verw.sent), 1)
+        self.assertIn("Namen ändern", verw.sent[0])
+
+
 if __name__ == "__main__":
     unittest.main()
 

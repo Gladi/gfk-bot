@@ -17,7 +17,8 @@ CHANNEL_KEYS = {
     "event_kategorie": "Event-Kategorie (Sprachkanäle)", "verwaltung": "Verwaltung (Nachrichten an die Führung)",
 }
 # Optionale Kanäle (fehlen nicht in der Prüfung): weitere Stelle für die Nachricht "Namen ändern"
-OPTIONAL_CHANNEL_KEYS = {"eingang_info": "Zusätzlich „Namen ändern“"}
+OPTIONAL_CHANNEL_KEYS = {"eingang_info": "Zusätzlich „Namen ändern“",
+                         "namen_log": "Namensänderungen (Spielname geändert)"}
 # Zusätzliche Kanäle je fester Nachricht (Art -> Kanal-Schlüssel)
 PANEL_EXTRA_CHANNELS = {"lobby": ["eingang_info"]}
 # Server-Logs (ersetzen SCNX): optional, leer = aus
