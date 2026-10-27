@@ -168,6 +168,9 @@ Mitglied, Führung und Admiral (Gäste und Freunde nicht). Danach ephemer die Wa
 ### Erinnerungen
 
 - Hintergrund-Task (`discord.ext.tasks`, jede Minute) prüft anstehende Events
+- Neues allianzweites Event (2026-10-27): die Karte im Eventkanal pingt **@everyone** - #events sehen nur Mitglieder,
+  Führung und Admiral, also erreicht der Ping nur die Allianz. Kein erneuter Ping beim Neu-Posten der Karten.
+  Die Beschreibung des Discord-Events verlinkt den Thread (der Ort eines Discord-Events kann kein Thread sein).
 - Zum konfigurierten Vorlauf pingt der Bot alle angemeldeten bzw. ausgewählten Teilnehmer (allianzweit im Eventkanal, privat im Thread)
 - Optional zweite Erinnerung zum Start
 - Erinnerungsstatus in SQLite, damit nach einem Neustart nichts doppelt oder gar nicht gesendet wird
