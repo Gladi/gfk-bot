@@ -285,7 +285,7 @@ class EventsCog(commands.Cog):
         if sev is None or thread is None:
             return
         try:
-            await sev.edit(description=t("ev_discord_desc", thread=thread.mention, url=thread.jump_url))
+            await sev.edit(description=t("ev_discord_desc", thread=thread.mention))
         except discord.HTTPException as exc:
             log.info("Beschreibung von Discord-Event %s nicht setzbar: %s", sev.id, exc)
 
