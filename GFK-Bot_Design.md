@@ -239,8 +239,9 @@ in denselben Kanal. Wer etwas geändert hat, kommt aus dem Audit-Log (Änderunge
 7. Erinnerungen
 8. Feinschliff: Logs, Fehlertexte, Tests auf einem Testserver
 
-Stand 2026-10-25: Pakete 1-8 und Server-Logs umgesetzt und auf dem Test-Server per Selbsttest geprüft; Nutzertest
-(Klicks, Formulare) steht aus.
+Stand 2026-10-27: Pakete 1-8 und Server-Logs umgesetzt, vom Nutzer auf dem Test-Server geprüft und **live seit
+2026-10-26** auf dem GFK-Server. Danach: @everyone-Ping bei neuen allianzweiten Events, Thread-Link im Discord-Event
+(2026-10-27).
 
 ## 10. Offene Entscheidungen
 
