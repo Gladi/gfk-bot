@@ -28,6 +28,7 @@ log = logging.getLogger("gfk.events")
 
 GOING, MAYBE, OUT, ASKED, DECLINED = "dabei", "vielleicht", "abgemeldet", "angefragt", "abgelehnt"
 PINGS = discord.AllowedMentions(users=True, roles=False, everyone=False)
+EVERYONE = discord.AllowedMentions(users=False, roles=False, everyone=True)   # nur die Karte allianzweiter Events
 VOICE_ALLOW = dict(view_channel=True, connect=True, speak=True)   # nur Rechte, die der Bot selbst hat
 
 
@@ -278,6 +279,16 @@ class EventsCog(commands.Cog):
         except discord.HTTPException:
             return None
 
+    async def _describe(self, guild: discord.Guild, ev: dict, thread: Optional[discord.Thread]):
+        """Discord-Event: Link zum Thread in die Beschreibung (das Event selbst kann nicht auf einen Thread zeigen)."""
+        sev = await self._scheduled(guild, ev)
+        if sev is None or thread is None:
+            return
+        try:
+            await sev.edit(description=t("ev_discord_desc", thread=thread.mention, url=thread.jump_url))
+        except discord.HTTPException as exc:
+            log.info("Beschreibung von Discord-Event %s nicht setzbar: %s", sev.id, exc)
+
     async def update_card(self, guild: discord.Guild, ev: dict):
         config = await db.get_config(guild.id)
         channel = _channel(guild, config, "events")
@@ -371,7 +382,12 @@ class EventsCog(commands.Cog):
                 notes.append(t("ev_no_discord_event"))
         ev = await db.get_event(event_id)
         embed, view = card(ev, await db.participants(event_id))
-        message = await channel.send(embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())
+        if kind == "alliance":
+            # #events sehen nur Mitglieder, Führung und Admiral - @everyone erreicht also nur die Allianz
+            message = await channel.send(t("ev_everyone", title=title, when=_ts(start)), embed=embed, view=view,
+                                         allowed_mentions=EVERYONE)
+        else:
+            message = await channel.send(embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())
         fields["message_id"] = message.id
         name = el.thread_name(category, title)
         try:
@@ -390,6 +406,7 @@ class EventsCog(commands.Cog):
         await db.update_event(event_id, **fields)
         ev = await db.get_event(event_id)
         await self.update_card(guild, ev)
+        await self._describe(guild, ev, thread)
         if thread is not None:
             intro = t("ev_intro_" + kind, creator=creator.mention, when=_ts(start), card=message.jump_url)
             if kind == "private":
@@ -654,6 +671,7 @@ class EventsCog(commands.Cog):
                     entity_type=discord.EntityType.voice, channel=vc, privacy_level=discord.PrivacyLevel.guild_only,
                     reason=f"GFK-Bot: Event {ev['id']}")
                 await db.update_event(ev["id"], discord_event_id=sev.id)
+                await self._describe(guild, await db.get_event(ev["id"]), await self._thread(guild, ev["thread_id"]))
         except discord.HTTPException as exc:
             log.warning("Discord-Event zu Event %s nicht umstellbar: %s", ev["id"], exc)
         ev = await db.get_event(ev["id"])

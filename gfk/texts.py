@@ -71,6 +71,8 @@ T = {
                            "Karte gibt es trotzdem.",
     "ev_no_thread": "⚠️ Der Thread ließ sich nicht anlegen.",
     "ev_location_pending": "Sprachkanal folgt 1 Stunde vor Beginn",
+    "ev_everyone": "@everyone 📅 Neues Allianz-Event: **{title}** ({when})",
+    "ev_discord_desc": "Absprache und Anmeldung im Thread: {thread}\n{url}",
     "ev_private": "Privat", "ev_cancelled": "Abgesagt", "ev_ended": "Beendet",
     "ev_f_when": "Wann", "ev_f_duration": "Dauer", "ev_f_creator": "Geplant von",
     "ev_f_going": "Dabei ({n})", "ev_f_maybe": "Vielleicht ({n})", "ev_f_voice": "Sprachkanal",
