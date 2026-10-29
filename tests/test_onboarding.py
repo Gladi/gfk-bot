@@ -292,6 +292,103 @@ class VerwaltungTests(unittest.TestCase):
         self.assertEqual((len(chan.sent), len(chan.edited)), (1, 1))
 
 
+class _LMember(_Member):
+    def __init__(self, uid, nick, roles=(), forbidden=False):
+        super().__init__(uid, nick, roles)
+        self.display_name, self.forbidden = nick, forbidden
+
+    async def edit(self, nick=None, reason=None):
+        if self.forbidden:
+            import discord
+            raise discord.Forbidden(type("R", (), {"status": 403, "reason": "x"})(), "x")
+        self.nick = self.display_name = nick
+
+    async def remove_roles(self, *roles, reason=None):
+        self.roles = [r for r in self.roles if r.id not in {x.id for x in roles}]
+
+    async def add_roles(self, *roles, reason=None):
+        self.roles += list(roles)
+
+
+class _LGuild(_VGuild):
+    def __init__(self, gid, chan, members=()):
+        super().__init__(gid, chan, members)
+        for m in self.members:
+            m.guild = self
+
+    def get_member(self, uid):
+        return next((m for m in self.members if m.id == uid), None)
+
+    def get_role(self, rid):
+        return _Role(rid)
+
+
+class _Roster:
+    def __init__(self, players):
+        self.players = players
+
+    async def get(self, session, max_age=None):
+        return self.players
+
+
+class LeftAllianceTests(unittest.TestCase):
+    """Täglicher Abgleich: wer nicht mehr in der GFK-Liste steht, verliert Kürzel und Mitglied/Führung."""
+    ROLES = {"admiral": 600, "fuehrung": 601, "mitglied": 602, "freund": 603, "gast": 604}
+
+    def run_sync(self, g, members, roster_ids):
+        import asyncio
+        from types import SimpleNamespace
+        from gfk.cogs.onboarding import OnboardingCog
+        db.init()
+        db.set_config_sync(g, {st.channel_key("verwaltung"): "1",
+                               **{st.role_key(k): str(v) for k, v in self.ROLES.items()}})
+        for m, name, pid in members:
+            db.save_member_sync(g, m.id, "GFK", name, pid)
+        chan = _VChan()
+        players = {pid: stfc.Player(pid, name, "GFK", "") for pid, name in roster_ids}
+        bot = SimpleNamespace(roster=_Roster(players), web=None, user=SimpleNamespace(id=1, __str__=lambda s: "bot"))
+        cog = OnboardingCog.__new__(OnboardingCog)
+        cog.bot, cog._own_renames = bot, set()
+
+        async def go():
+            await cog.sync_guild(_LGuild(g, chan, [m for m, _n, _p in members]))
+        asyncio.run(go())
+        return chan
+
+    def test_member_left(self):
+        stay = _LMember(1, "[GFK] McRunner", [602])
+        left = _LMember(2, "[GFK] Kestrel_77", [602])
+        lead = _LMember(3, "[GFK] Ëlla Star", [601])
+        adm = _LMember(4, "[GFK] Boss", [600])
+        friend = _LMember(5, "[GFK] Freundin", [603])
+        chan = self.run_sync(7171, [(stay, "McRunner", 11), (left, "Kestrel_77", 33), (lead, "Ëlla Star", 22),
+                                    (adm, "Boss", 44), (friend, "Freundin", 55)], [(11, "McRunner")])
+        self.assertEqual(stay.nick, "[GFK] McRunner")
+        self.assertEqual((left.nick, [r.id for r in left.roles]), ("Kestrel_77", [604]))
+        self.assertEqual((lead.nick, [r.id for r in lead.roles]), ("Ëlla Star", [604]))
+        self.assertEqual((adm.nick, [r.id for r in adm.roles]), ("[GFK] Boss", [600]))     # Admiral nie
+        self.assertEqual((friend.nick, [r.id for r in friend.roles]), ("Freundin", [603]))
+        self.assertEqual(db.get_member_sync(7171, 2), ("", "Kestrel_77", None))
+        cards = [m for m in chan.sent if not isinstance(m, str) and "verlassen" in (m.title or "")]
+        self.assertEqual(len(cards), 2)
+        texts = [m for m in chan.sent if isinstance(m, str)]
+        self.assertTrue(any("Admiral" in x for x in texts) and any("**Freundin**" in x for x in texts))
+
+    def test_no_permission(self):
+        top = _LMember(2, "[GFK] Kestrel_77", [601], forbidden=True)
+        chan = self.run_sync(7272, [(top, "Kestrel_77", 33)], [(11, "McRunner")])
+        self.assertEqual((top.nick, [r.id for r in top.roles]), ("[GFK] Kestrel_77", [601]))
+        self.assertTrue(any(isinstance(x, str) and "darf" in x for x in chan.sent))
+
+    def test_too_many_at_once_changes_nothing(self):
+        people = [(_LMember(i, f"[GFK] P{i}", [602]), f"P{i}", 100 + i) for i in range(1, 7)]
+        chan = self.run_sync(7373, people, [(11, "McRunner")])
+        self.assertTrue(all(m.nick.startswith("[GFK]") and [r.id for r in m.roles] == [602] for m, _n, _p in people))
+        self.assertEqual(db.get_member_sync(7373, 1), ("GFK", "P1", 101))        # bleibt verknüpft
+        self.assertEqual(len(chan.sent), 2)                                       # Warnung + Liste
+        self.assertIn("**6**", chan.sent[0])
+
+
 class SpecialCharacterTests(unittest.TestCase):
     def test_tags_with_special_letters(self):
         self.assertEqual(names.clean_tag("[børg]"), "BØRG")

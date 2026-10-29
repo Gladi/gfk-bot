@@ -24,6 +24,7 @@ from gfk.views import panels
 log = logging.getLogger("gfk.onboarding")
 
 SYNC_HOURS = 24
+LEAVE_LIMIT = 5                 # mehr Austritte in einem Abgleich -> nur melden (Schutz gegen eine kaputte Liste)
 
 
 def status_of(member: discord.Member, config: Dict[str, str]) -> Set[str]:
@@ -388,14 +389,15 @@ class OnboardingCog(commands.Cog):
             await update_unlinked_list(guild)
 
     async def demote(self, guild: discord.Guild, config: Dict[str, str], member: discord.Member, status: Set[str],
-                     nick: str):
-        """GFK-Kürzel weg -> Gast; die Führung kann in Verwaltung mit einem Klick Freund daraus machen."""
+                     nick: str, why: str = "demoted"):
+        """GFK-Kürzel weg -> Gast; die Führung kann in Verwaltung mit einem Klick Freund daraus machen.
+        why: "demoted" (Kürzel entfernt) oder "left" (laut stfc.pro nicht mehr in GFK)."""
         if not config.get(st.role_key("gast")):
             return
         old = ", ".join(st.ROLE_KEYS[s] for s in st.STATUS_ROLES if s in status)
         await set_status(guild, config, member, "gast", self.bot.user)
-        embed = discord.Embed(title=t("verw_demoted_title"), color=discord.Color.orange(),
-                              description=t("verw_demoted", user=member.mention, nick=nick, old=old))
+        embed = discord.Embed(title=t(f"verw_{why}_title"), color=discord.Color.orange(),
+                              description=t(f"verw_{why}", user=member.mention, nick=nick, old=old))
         await add_card(guild, member.id, embed=embed, view=status_view(member.id, names.tag_of_nick(nick)))
         await update_unlinked_list(guild)
 
@@ -452,6 +454,7 @@ class OnboardingCog(commands.Cog):
             member, player = guild.get_member(user_id), stfc.find(roster, game_name)
             if member is not None and player is not None:
                 await db.save_member(guild.id, user_id, stfc.ALLIANCE_TAG, player.name, player.player_id)
+        gone = []
         for user_id, alliance, game_name, player_id in rows:
             member = guild.get_member(user_id)
             if member is None:
@@ -459,8 +462,7 @@ class OnboardingCog(commands.Cog):
                 continue
             player = roster.get(player_id)
             if player is None:
-                await db.save_member(guild.id, user_id, alliance, game_name, None)
-                await notify_verwaltung(guild, t("sync_left", user=member.mention, name=game_name))
+                gone.append((member, game_name))
                 continue
             if player.name == game_name:
                 continue
@@ -471,7 +473,36 @@ class OnboardingCog(commands.Cog):
                 log.info("Nickname von %s nicht änderbar", user_id)
             await db.save_member(guild.id, user_id, alliance, player.name, player_id)
             await post_name_change(guild, member, game_name, player.name, "sync")
+        if len(gone) > LEAVE_LIMIT:      # so viele auf einmal: eher eine fehlerhafte Liste -> nichts automatisch
+            await notify_verwaltung(guild, t("sync_left_many", n=len(gone), people=logfmt.clip(
+                ", ".join(f"{m.mention} ({name})" for m, name in gone), 1500)))
+        else:
+            config = await db.get_config(guild.id)
+            for member, game_name in gone:
+                await self.left_alliance(guild, config, member, game_name)
         await update_unlinked_list(guild)
+
+    async def left_alliance(self, guild: discord.Guild, config: Dict[str, str], member: discord.Member,
+                            game_name: str):
+        """Laut stfc.pro nicht mehr in GFK: Nickname nur noch `Name`, Mitglied/Führung -> Gast (der Admiral nie)."""
+        await db.save_member(guild.id, member.id, "", game_name, None)
+        status = status_of(member, config)
+        if "admiral" in status:
+            await notify_verwaltung(guild, t("sync_left_admiral", user=member.mention, name=game_name))
+            return
+        nick = member.display_name
+        try:
+            if names.tag_of_nick(member.nick) == stfc.ALLIANCE_TAG:
+                nick = names.nickname(None, game_name)
+                await self._set_nick(member, nick, "GFK-Bot: laut stfc.pro nicht mehr in GFK")
+            if names.loses_gfk_status(status, None, stfc.ALLIANCE_TAG):
+                await self.demote(guild, config, member, status, nick, "left")
+                return
+        except discord.Forbidden:
+            log.info("Nickname/Rollen von %s nicht änderbar", member.id)
+            await notify_verwaltung(guild, t("sync_left_no_perm", user=member.mention, name=game_name))
+            return
+        await notify_verwaltung(guild, t("sync_left", user=member.mention, name=game_name, nick=nick))
 
 
 async def setup(bot: commands.Bot):

@@ -206,7 +206,18 @@ T = {
                         "stfc.pro, Nickname angepasst.",
     "name_change_self": "✏️ {user} heißt im Spiel jetzt **{new}** (vorher **{old}**) - selbst über „Namen ändern“ "
                         "eingetragen.",
-    "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste.",
+    "sync_left": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste - Nickname jetzt **{nick}**.",
+    "sync_left_admiral": "👋 {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste. Beim Admiral ändert "
+                         "der Bot weder Nickname noch Rollen - bitte von Hand prüfen.",
+    "sync_left_no_perm": "⚠️ {user} ({name}) steht laut stfc.pro nicht mehr in der GFK-Liste, aber der Bot darf "
+                         "Nickname oder Rollen nicht ändern (Rolle über der Bot-Rolle) - bitte von Hand anpassen.",
+    "sync_left_many": "⚠️ Laut stfc.pro fehlen auf einmal **{n}** verknüpfte Personen in der GFK-Liste: {people}\n"
+                      "Zur Sicherheit ändert der Bot nichts automatisch (die Liste könnte fehlerhaft sein) - bitte "
+                      "prüfen und bei Bedarf per `/status` anpassen. Solange das so bleibt, kommt diese Meldung bei "
+                      "jedem täglichen Abgleich.",
+    "verw_left_title": "👋 GFK verlassen",
+    "verw_left": "{user} steht laut stfc.pro nicht mehr in der GFK-Liste, heißt jetzt **{nick}** und ist deshalb "
+                 "wieder Gast (vorher: {old}). Soll {user} Freund werden?",
     "verw_info_title": "📋 Rollenvergabe - so geht's",
     "verw_info_text": "**1. Neue Leute**\nSie tragen in {eingang} über „Namen ändern“ Kürzel und Spielnamen ein und "
                       "werden automatisch **Gast**. Hier erscheint dann eine Karte mit Buttons.\n\n"
@@ -219,8 +230,9 @@ T = {
                       "**4. Mitglied und Führung nur mit geprüftem GFK-Kürzel**\nDer Nickname beginnt mit `[GFK]` "
                       "**und** der Spielname wurde über „Namen ändern“ auf stfc.pro gefunden. Sonst gibt es nur "
                       "**Freund**. Wer noch nicht verknüpft ist, steht in der Liste darunter.\n\n"
-                      "**5. Kürzel entfernt**\nNimmt jemand `[GFK]` aus dem Nickname, wird er automatisch **Gast** "
-                      "und hier erscheint eine Karte.\n\n"
+                      "**5. Kürzel entfernt oder GFK verlassen**\nNimmt jemand `[GFK]` aus dem Nickname oder steht "
+                      "laut stfc.pro nicht mehr in der GFK-Liste (täglicher Abgleich, der Bot setzt dann den Nickname "
+                      "ohne Kürzel), wird er automatisch **Gast** und hier erscheint eine Karte.\n\n"
                       "Jede Änderung steht im user-log.",
     "verw_reports_title": "🚨 Vorfälle - so geht's",
     "verw_reports_text": "**Neue Meldung** (außer 0-Node): Wer sich kümmert, klickt im Beitrag **🔵 In Bearbeitung** - "

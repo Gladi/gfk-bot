@@ -108,6 +108,11 @@ Meldungen über den Bot, auch nach dem Löschen der Beiträge. Fremde Nachrichte
    Verliert jemand das Kürzel GFK (über „Namen ändern“ oder direkt am Nickname), wird er automatisch Gast (der Admiral
    nie); die Führung bekommt in Verwaltung eine Nachricht mit dem Button „Freund“;
    alternativ später per `/status`.
+   **GFK verlassen** (2026-10-29): Fehlt eine verknüpfte Person beim täglichen Abgleich in der stfc.pro-Liste, setzt
+   der Bot den Nickname auf `Name` (ohne Kürzel), löst die Verknüpfung und macht aus Mitglied/Führung **Gast** - mit
+   derselben Karte „Freund?“ in Verwaltung. Gast/Freund behalten ihren Status (nur Nickname + Hinweis), beim Admiral
+   ändert der Bot nichts (nur Hinweis). Fehlen mehr als 5 auf einmal, ändert der Bot nichts und meldet es nur (Schutz
+   gegen eine fehlerhafte Liste).
 7. Hinweis: Den Nickname des Server-Eigentümers und von Personen mit Rollen über der Bot-Rolle kann der Bot nicht ändern.
 
 ## 6. Modul Eventplanung
