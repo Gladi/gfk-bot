@@ -389,6 +389,50 @@ class LeftAllianceTests(unittest.TestCase):
         self.assertIn("**6**", chan.sent[0])
 
 
+class UninstallTests(unittest.TestCase):
+    def test_clear_guild_data_keeps_other_guilds(self):
+        db.init()
+        a, b = 8181, 8282
+        for g in (a, b):
+            db.set_config_sync(g, {"x": "1"})
+            db.save_member_sync(g, 1, "GFK", "N", 11)
+            db.add_notice_sync(g, 1, g)
+        db.save_roster_sync([(11, "N", "GFK", "")], 1.0)
+        db.clear_guild_data_sync(a)
+        self.assertEqual(db.get_config_sync(a), {})
+        self.assertIsNone(db.get_member_sync(a, 1))
+        self.assertEqual(db.all_notices_sync(a), [])
+        self.assertEqual(db.get_config_sync(b), {"x": "1"})
+        self.assertEqual(db.all_notices_sync(b), [b])
+        self.assertEqual(db.load_roster_sync(), ([], None))
+
+    def test_uninstall_removes_own_messages_and_data(self):
+        import asyncio
+        from types import SimpleNamespace
+        from gfk.cogs.setup import uninstall_guild
+        db.init()
+        g = 8383
+        db.set_config_sync(g, {st.channel_key("verwaltung"): "1", st.channel_key("eingang"): "1", "panel_lobby": "501",
+                               "info_verwaltung": "502", "verw_unlinked_msg": "503"})
+        db.add_notice_sync(g, 7, 504)
+        db.save_member_sync(g, 7, "GFK", "N", 11)
+        chan = _VChan()
+        removed = []
+
+        class Events:
+            async def remove_all(self, guild):
+                removed.append(guild.id)
+        guild = _VGuild(g, chan)
+        bot = SimpleNamespace(get_cog=lambda name: Events() if name == "EventsCog" else None)
+        asyncio.run(uninstall_guild(bot, guild, SimpleNamespace(mention="<@9>")))
+        self.assertEqual(removed, [g])
+        self.assertEqual(sorted(chan.deleted), [501, 502, 503, 504])
+        self.assertEqual(len(chan.sent), 1)                                     # Hinweis, wer deinstalliert hat
+        self.assertIn("<@9>", chan.sent[0])
+        self.assertEqual(db.get_config_sync(g), {})
+        self.assertIsNone(db.get_member_sync(g, 7))
+
+
 class SpecialCharacterTests(unittest.TestCase):
     def test_tags_with_special_letters(self):
         self.assertEqual(names.clean_tag("[børg]"), "BØRG")

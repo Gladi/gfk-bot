@@ -729,6 +729,17 @@ class EventsCog(commands.Cog):
                 pass
         await db.update_event(ev["id"], status="done", voice_channel_id=None)
 
+    async def remove_all(self, guild: discord.Guild):
+        """Deinstallation: alle offenen Events samt Discord-Event, Karte, Thread und Sprachkanal entfernen."""
+        for ev in await db.active_events(guild.id):
+            sev = await self._scheduled(guild, ev)
+            if sev is not None:
+                try:
+                    await sev.delete()
+                except discord.HTTPException:
+                    pass
+            await self.cleanup(guild, ev)
+
     async def _delete_channel(self, channel):
         if channel is None:
             return

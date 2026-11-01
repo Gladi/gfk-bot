@@ -127,6 +127,18 @@ T = {
     "setup_lead_mention": "Die Rolle {role} ist nicht erwähnbar und der Bot darf nicht alle Rollen erwähnen - bei "
                           "neuen Meldungen käme kein Ping. Rolle erwähnbar machen oder dem Bot das Recht geben.",
     "panels_posted": "✅ Feste Nachrichten gepostet: {items}",
+    "uninstall_confirm": "⚠️ **GFK-Bot deinstallieren?**\n"
+                         "• Gelöscht werden: alle Einstellungen, Verknüpfungen mit stfc.pro, Meldungsdaten, das "
+                         "Rollen-Protokoll und alle offenen Events (mit Discord-Event, Karte, Thread und Sprachkanal), "
+                         "dazu die Button-Nachrichten und Karten des Bots.\n"
+                         "• Es bleiben: Rollen, Kanäle, Nicknames, Beiträge im Vorfallforum und die Log-Kanäle.\n"
+                         "• Danach verlässt der Bot den Server. Tägliche Server-Backups enthalten die Daten noch, bis "
+                         "sie ablaufen (bis zu 30 Tage).\n\nDas lässt sich nicht rückgängig machen.",
+    "uninstall_yes": "Ja, deinstallieren", "uninstall_no": "Abbrechen",
+    "uninstall_running": "⏳ Wird deinstalliert …",
+    "uninstall_done": "👋 Fertig: Daten gelöscht, der Bot verlässt jetzt den Server.",
+    "uninstall_aborted": "Abgebrochen, es wurde nichts geändert.",
+    "uninstall_note": "👋 {user} hat den GFK-Bot deinstalliert. Einstellungen und Daten sind gelöscht.",
     "panels_missing": "⚠️ Erst die Kanäle einrichten (`/setup kanäle`): {items}",
     # Feste Nachrichten (Panels)
     "panel_lobby_title": "👋 Willkommen!",

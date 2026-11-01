@@ -12,6 +12,7 @@ from discord.ext import commands
 
 from gfk import db, settings as st
 from gfk.texts import t
+from gfk.util import SafeView
 from gfk.views import panels as panels_mod
 from gfk.views.panels import PANELS, panel_message
 
@@ -230,6 +231,69 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         if posted:
             await interaction.followup.send(t("panels_posted", items=", ".join(posted)), ephemeral=True)
 
+    @app_commands.command(name="uninstall", description="Alle Daten des Bots löschen und den Server verlassen")
+    async def uninstall(self, interaction: discord.Interaction):
+        await interaction.response.send_message(t("uninstall_confirm"), view=UninstallView(self.bot, interaction.user.id),
+                                                ephemeral=True)
+
+
+class UninstallView(SafeView):
+    """Rückfrage vor dem Deinstallieren; beim Klick wird das Admin-Recht noch einmal geprüft."""
+
+    def __init__(self, bot: commands.Bot, user_id: int):
+        super().__init__(timeout=120)
+        self.bot, self.user_id = bot, user_id
+        self.confirm.label, self.abort.label = t("uninstall_yes"), t("uninstall_no")
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.user_id and interaction.user.guild_permissions.administrator
+
+    @discord.ui.button(style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.stop()
+        guild = interaction.guild                         # nach dem Verlassen liefert interaction.guild nichts mehr
+        await interaction.response.edit_message(content=t("uninstall_running"), view=None)
+        await uninstall_guild(self.bot, guild, interaction.user)
+        await interaction.edit_original_response(content=t("uninstall_done"))
+        await guild.leave()
+        await db.clear_guild_data(guild.id)               # was bis zum Verlassen noch geschrieben wurde
+        log.info("Deinstalliert auf %s durch %s.", guild.id, interaction.user.id)
+
+    @discord.ui.button(style=discord.ButtonStyle.secondary)
+    async def abort(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.stop()
+        await interaction.response.edit_message(content=t("uninstall_aborted"), view=None)
+
+
+async def uninstall_guild(bot: commands.Bot, guild: discord.Guild, actor: discord.abc.User):
+    """Alles entfernen, was ohne den Bot nicht mehr funktioniert (offene Events, Button-Nachrichten, Karten), dann die
+    Daten löschen. Rollen, Kanäle, Nicknames und Vorfall-Beiträge bleiben."""
+    events = bot.get_cog("EventsCog")
+    if events is not None:
+        await events.remove_all(guild)
+    config = await db.get_config(guild.id)
+    own = [(key, config.get(msg_key)) for _kind, key, msg_key, _required in _panel_targets()]
+    own += [("verwaltung", config.get(k)) for k in ("info_verwaltung", "verw_unlinked_msg")]
+    own += [("verwaltung", m) for m in await db.all_notices(guild.id)]
+    for channel_key, message_id in own:
+        channel = _channel(guild, config, channel_key)
+        if channel is not None and message_id:
+            try:
+                await channel.get_partial_message(int(message_id)).delete()
+            except discord.HTTPException:
+                pass
+    await notify_verwaltung(guild, t("uninstall_note", user=actor.mention))
+    await db.clear_guild_data(guild.id)
+
+
+def _panel_targets():
+    """(Art, Kanal-Schlüssel, Config-Schlüssel der Nachricht, Pflicht) aller festen Nachrichten."""
+    targets = []
+    for kind, (channel_key, *_rest) in PANELS.items():
+        targets.append((kind, channel_key, f"panel_{kind}", True))
+        targets += [(kind, k, f"panel_{kind}_{k}", False) for k in st.PANEL_EXTRA_CHANNELS.get(kind, [])]
+    return targets
+
 
 async def post_info(guild: discord.Guild):
     """Erklärung für die Führung in Verwaltung (Rollenvergabe, Vorfälle): einmal posten und anpinnen, danach nur noch
@@ -267,11 +331,7 @@ async def post_panels(guild: discord.Guild):
     """Postet die festen Nachrichten oder bearbeitet die vorhandenen (damit sie oben im Kanal bleiben)."""
     config = await db.get_config(guild.id)
     posted, missing, updates, fresh = [], [], {}, set()
-    targets = []                                   # (Art, Kanal-Schlüssel, Config-Schlüssel der Nachricht, Pflicht)
-    for kind, (channel_key, *_rest) in PANELS.items():
-        targets.append((kind, channel_key, f"panel_{kind}", True))
-        targets += [(kind, k, f"panel_{kind}_{k}", False) for k in st.PANEL_EXTRA_CHANNELS.get(kind, [])]
-    for kind, channel_key, msg_key, required in targets:
+    for kind, channel_key, msg_key, required in _panel_targets():
         ch = _channel(guild, config, channel_key)
         if ch is None:
             if required:

@@ -26,6 +26,9 @@ Der Bot ist nur allianzintern nutzbar (Mitglied, Führung, Admiral). Einzige Aus
 - Kanäle: Verwaltung (Nachrichten an die Führung, z. B. `#verwaltung`), Meldungskanal, Vorfallforum, Eingangskanal, Eventkanal (nur allianzintern sichtbar), Event-Kategorie für die Sprachkanäle
 - Erinnerungsvorlauf für Events (Standard 30 Minuten)
 - `/setup panels` postet die Button-Nachrichten in die Kanäle neu
+- `/setup uninstall` (mit Rückfrage): entfernt offene Events, Button-Nachrichten und Karten, löscht alle Daten des
+  Servers und verlässt ihn. Rollen, Kanäle, Nicknames, Vorfall-Beiträge und Log-Kanäle bleiben. Nach einer neuen
+  Einladung muss `/setup` neu eingerichtet werden.
 
 ## 3. Modul Rollenverwaltung
 

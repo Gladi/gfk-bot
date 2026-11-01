@@ -51,9 +51,11 @@ class GfkBot(commands.Bot):
         if _synced:
             pass                              # zweiter Start ohne Message Content: schon angemeldet (sonst Rate-Limit)
         elif dev_guild:
-            guild = discord.Object(int(dev_guild))
-            synced = await self.tree.sync(guild=guild)
-            log.info("%d Befehle auf dem Server %s angemeldet.", len(synced), dev_guild)
+            try:
+                synced = await self.tree.sync(guild=discord.Object(int(dev_guild)))
+                log.info("%d Befehle auf dem Server %s angemeldet.", len(synced), dev_guild)
+            except discord.Forbidden:         # z. B. nach /setup uninstall - on_guild_join holt es nach
+                log.warning("Bot ist nicht auf dem Server %s - Befehle nicht angemeldet.", dev_guild)
         else:
             synced = await self.tree.sync()
             log.info("%d Befehle global angemeldet.", len(synced))
@@ -65,6 +67,12 @@ class GfkBot(commands.Bot):
         if getattr(self, "web", None) is not None and not self.web.closed:
             await self.web.close()
         await super().close()
+
+    async def on_guild_join(self, guild: discord.Guild):
+        """Nach einer Deinstallation wieder eingeladen: Befehle ohne Neustart anmelden."""
+        if str(guild.id) == (os.environ.get("GFK_GUILD") or os.environ.get("GFK_DEV_GUILD") or "").strip():
+            synced = await self.tree.sync(guild=guild)
+            log.info("%d Befehle auf dem Server %s angemeldet.", len(synced), guild.id)
 
     async def on_ready(self):
         log.info("GFK-Bot online als %s auf %d Server(n) - bereit.", self.user, len(self.guilds))

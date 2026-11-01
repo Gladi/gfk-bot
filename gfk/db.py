@@ -164,6 +164,22 @@ def load_roster_sync():
     return ([r[:4] for r in rows], rows[0][4]) if rows else ([], None)
 
 
+def clear_guild_data_sync(guild_id: int):
+    """Deinstallation: alle Daten des Servers löschen, auch die gespeicherte stfc.pro-Liste."""
+    with _conn() as conn:
+        conn.execute("DELETE FROM event_participants WHERE event_id IN (SELECT id FROM events WHERE guild_id = ?)",
+                     (guild_id,))
+        for table in ("events", "reports", "role_log", "notices", "members", "config"):
+            conn.execute(f"DELETE FROM {table} WHERE guild_id = ?", (guild_id,))
+        conn.execute("DELETE FROM stfc_roster")
+
+
+def all_notices_sync(guild_id: int):
+    """Nachrichten-IDs aller offenen Karten in Verwaltung."""
+    with _conn() as conn:
+        return [r[0] for r in conn.execute("SELECT message_id FROM notices WHERE guild_id = ?", (guild_id,))]
+
+
 def delete_member_sync(guild_id: int, user_id: int):
     with _conn() as conn:
         conn.execute("DELETE FROM members WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
@@ -175,6 +191,8 @@ def log_role_change_sync(guild_id: int, actor_id: int, target_id: int, old: str,
                      "VALUES (?, ?, ?, ?, ?, datetime('now'))", (guild_id, actor_id, target_id, old, new))
 
 
+clear_guild_data = _async(clear_guild_data_sync)
+all_notices = _async(all_notices_sync)
 save_member = _async(save_member_sync)
 get_member = _async(get_member_sync)
 linked_members = _async(linked_members_sync)
