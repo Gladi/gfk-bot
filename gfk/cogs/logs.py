@@ -119,14 +119,18 @@ class LogsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         guild = after.guild
-        if before.nick != after.nick:
+        # after ist das live aktualisierte Mitglied: Stand dieses Ereignisses vor dem ersten await festhalten, sonst
+        # stehen später eintreffende Änderungen doppelt im Log (hier und bei ihrem eigenen Ereignis)
+        nick_after = after.nick
+        added = [r for r in after.roles if r not in before.roles]
+        removed = [r for r in before.roles if r not in after.roles]
+        timed_out_until = after.timed_out_until
+        if before.nick != nick_after:
             by = await self._actor(guild, A.member_update, after.id)
             e = discord.Embed(title=t("log_nick"), color=COLORS["change"], description=f"{after.mention} {by}".strip())
             e.add_field(name=t("log_before"), value=logfmt.clip(before.nick or before.name))
-            e.add_field(name=t("log_after"), value=logfmt.clip(after.nick or after.name))
+            e.add_field(name=t("log_after"), value=logfmt.clip(nick_after or after.name))
             await self._send(guild, "log_user", e)
-        added = [r for r in after.roles if r not in before.roles]
-        removed = [r for r in before.roles if r not in after.roles]
         if added or removed:
             by = await self._actor(guild, A.member_role_update, after.id)
             e = discord.Embed(title=t("log_member_roles"), color=COLORS["change"],
@@ -136,10 +140,10 @@ class LogsCog(commands.Cog):
             if removed:
                 e.add_field(name=t("log_removed"), value=logfmt.clip(" ".join(r.mention for r in removed)))
             await self._send(guild, "log_user", e)
-        if before.timed_out_until != after.timed_out_until:
+        if before.timed_out_until != timed_out_until:
             by = await self._actor(guild, A.member_update, after.id)
-            if after.timed_out_until and after.timed_out_until > discord.utils.utcnow():
-                title, value = t("log_timeout"), t("log_timeout_until", until=_ts(after.timed_out_until))
+            if timed_out_until and timed_out_until > discord.utils.utcnow():
+                title, value = t("log_timeout"), t("log_timeout_until", until=_ts(timed_out_until))
             else:
                 title, value = t("log_timeout_end"), "–"
             e = discord.Embed(title=title, color=COLORS["bad"], description=f"{after.mention} {by}".strip())

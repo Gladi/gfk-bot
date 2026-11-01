@@ -88,6 +88,49 @@ class LogSettingsTests(unittest.TestCase):
                 self.assertIn(key, T, f"{path}: {key}")
 
 
+class MemberUpdateTests(unittest.TestCase):
+    """after ist das live aktualisierte Mitglied: Änderungen während der Audit-Log-Abfrage gehören zum nächsten Ereignis."""
+
+    def run_update(self, before, after, during):
+        import asyncio
+        from types import SimpleNamespace
+        from gfk.cogs.logs import LogsCog
+        sent = []
+        cog = LogsCog.__new__(LogsCog)
+
+        async def actor(guild, actions, target_id, within=20):
+            during()
+            return ""
+
+        async def send(guild, key, embed):
+            sent.append(embed)
+        cog._actor, cog._send = actor, send
+        after.guild = SimpleNamespace(id=1)
+        asyncio.run(LogsCog.on_member_update(cog, before, after))
+        return sent
+
+    @staticmethod
+    def member(nick, roles):
+        from types import SimpleNamespace
+        return SimpleNamespace(id=7, name="n", nick=nick, roles=list(roles), timed_out_until=None, mention="<@7>")
+
+    def test_roles_changed_during_nick_lookup_are_not_logged_again(self):
+        from types import SimpleNamespace
+        mitglied = SimpleNamespace(mention="<@&1>")
+        before, after = self.member("[GFK] A", [mitglied]), self.member("A", [mitglied])
+        sent = self.run_update(before, after, lambda: after.roles.remove(mitglied))
+        self.assertEqual([e.title for e in sent], [T["log_nick"]])
+        self.assertEqual(sent[0].fields[1].value, "A")
+
+    def test_nick_and_roles_in_one_event(self):
+        from types import SimpleNamespace
+        mitglied, gast = SimpleNamespace(mention="<@&1>"), SimpleNamespace(mention="<@&2>")
+        before, after = self.member("[GFK] A", [mitglied]), self.member("A", [gast])
+        sent = self.run_update(before, after, lambda: None)
+        self.assertEqual([e.title for e in sent], [T["log_nick"], T["log_member_roles"]])
+        self.assertEqual([f.value for f in sent[1].fields], ["<@&2>", "<@&1>"])
+
+
 class ActorLookupTests(unittest.TestCase):
     """Regression: eine einzelne AuditLogAction darf nicht als Liste mehrerer Aktionen behandelt werden."""
 
