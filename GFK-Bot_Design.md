@@ -230,10 +230,15 @@ in denselben Kanal. Wer etwas geändert hat, kommt aus dem Audit-Log (Änderunge
 
 ## 8. Projektstruktur
 
-- `gfk/main.py` – Start, Laden der Cogs, Registrierung persistenter Views
-- `gfk/db.py` – SQLite-Zugriff
-- `gfk/cogs/setup.py`, `roles.py`, `reports.py`, `onboarding.py`, `events.py`
-- `gfk/views/` – Buttons, Selects, Modals
+Seit 2026-11-04 liegen Meldungen, Events, Start, DB-Grundlage und die `/setup`-Grundlage in der gemeinsamen Bibliothek
+**bot-core** (Git-Submodul `bot-core/`, Paket `botcore`), die auch der OUT-Bot nutzt. Button-IDs (`gfk:…`),
+Datenbank (`gfk.db`), Befehle und Texte sind dabei unverändert geblieben. Der Kalender-Button und die dynamischen
+Sprachkanäle aus bot-core sind beim GFK-Bot aus.
+
+- `gfk/main.py` – Start (botcore.runner), Liste der Module
+- `gfk/db.py` – SQLite: botcore-Tabellen + GFK-Tabellen
+- `gfk/cogs/setup.py` (leitet von botcore SetupBase ab), `roles.py`, `onboarding.py`, `logs.py`
+- `bot-core/botcore/cogs/reports.py`, `events.py` – Meldungen und Events
 - `Dockerfile`, `requirements.txt`, `README.md`
 
 ## 9. Umsetzungsreihenfolge (Pakete)

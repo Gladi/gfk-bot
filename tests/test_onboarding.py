@@ -420,10 +420,11 @@ class UninstallTests(unittest.TestCase):
         removed = []
 
         class Events:
-            async def remove_all(self, guild):
+            async def uninstall_cleanup(self, guild):
                 removed.append(guild.id)
+        from gfk.cogs.setup import SetupCog
         guild = _VGuild(g, chan)
-        bot = SimpleNamespace(get_cog=lambda name: Events() if name == "EventsCog" else None)
+        bot = SimpleNamespace(cogs={"SetupCog": SetupCog.__new__(SetupCog), "EventsCog": Events()})
         asyncio.run(uninstall_guild(bot, guild, SimpleNamespace(mention="<@9>")))
         self.assertEqual(removed, [g])
         self.assertEqual(sorted(chan.deleted), [501, 502, 503, 504])

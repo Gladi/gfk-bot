@@ -1,144 +1,69 @@
 """
-GFK-Bot - /setup (nur Server-Admins): Rollen, Kanäle, Erinnerung, Anzeige mit Prüfung, feste Nachrichten.
+GFK-Bot - /setup (nur Server-Admins). Gemeinsames (erinnerung, anzeigen, panels, uninstall, Prüfung) kommt aus
+botcore.cogs.setup; hier stehen die GFK-Optionen von rollen und kanäle, die Server-Logs, der stfc.pro-Abgleich und die
+angepinnte Erklärung in Verwaltung.
 
 Die Prüfung (status_lines) wird auch vom Test-Werkzeug gfk.devtools genutzt.
 """
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from botcore.cogs import setup as core
+from botcore.cogs.setup import (_channel, _role, notify_verwaltung, post_panels, status_lines,  # noqa: F401
+                                uninstall_guild)
 from gfk import db, settings as st
 from gfk.texts import t
-from gfk.util import SafeView
 from gfk.views import panels as panels_mod
-from gfk.views.panels import PANELS, panel_message
 
 log = logging.getLogger("gfk.setup")
 
-# Benötigte Rechte je Kanal (Schlüssel aus settings.CHANNEL_KEYS) und auf dem Server
-CHANNEL_PERMS = {
-    "eingang": ["view_channel", "send_messages", "embed_links"],
-    "meldungen": ["view_channel", "send_messages", "embed_links"],
-    "vorfallforum": ["view_channel", "send_messages", "embed_links", "attach_files", "manage_threads"],
-    "events": ["view_channel", "send_messages", "embed_links", "create_public_threads", "create_private_threads",
-               "send_messages_in_threads", "manage_threads"],
-    "event_kategorie": ["view_channel", "manage_channels", "connect", "speak"],
-    "verwaltung": ["view_channel", "send_messages", "embed_links"],
-    "eingang_info": ["view_channel", "send_messages", "embed_links"],
-    "namen_log": ["view_channel", "send_messages_in_threads"],
-    "logbuch": ["view_channel", "send_messages", "send_messages_in_threads", "manage_threads"],
-}
-CHANNEL_LABELS = {**st.CHANNEL_KEYS, **st.OPTIONAL_CHANNEL_KEYS}
-GUILD_PERMS = ["manage_roles", "manage_nicknames", "manage_events", "create_events"]
 LOG_PERMS = ["view_channel", "send_messages", "embed_links"]
 
 
-def _role(guild: discord.Guild, config: Dict[str, str], key: str) -> Optional[discord.Role]:
-    value = config.get(st.role_key(key))
-    return guild.get_role(int(value)) if value else None
-
-
-def _channel(guild: discord.Guild, config: Dict[str, str], key: str):
-    value = config.get(st.channel_key(key))
-    return guild.get_channel_or_thread(int(value)) if value else None   # auch Threads/Forenbeiträge
-
-
-def status_lines(guild: discord.Guild, config: Dict[str, str], message_content: Optional[bool] = None) -> List[str]:
-    """Probleme der aktuellen Einrichtung als Textzeilen (leer = alles in Ordnung). message_content: ob der Bot den
-    Message Content Intent hat (None = nicht prüfen, z. B. im Test-Werkzeug)."""
-    lines = []
-    miss = st.missing(config)
-    if miss:
-        lines.append(t("setup_missing", items=", ".join(miss)))
-    me = guild.me
-    roles = {k: _role(guild, config, k) for k in st.ROLE_KEYS}
-    bad = st.unmanageable(me.top_role.position,
-                          [st.RoleInfo(k, r.name, r.position) for k, r in roles.items() if r and k in st.MANAGED_ROLES])
-    if bad:
-        lines.append(t("setup_hierarchy", items=", ".join(bad)))
-    order = st.order_problems({k: (r.position if r else None) for k, r in roles.items()})
-    if order:
-        lines.append(t("setup_order", items="; ".join(order)))
-    perms = []
-    gp = me.guild_permissions
-    perms += [f"Server: {p}" for p in GUILD_PERMS if not getattr(gp, p, False)]
-    for key, needed in CHANNEL_PERMS.items():
-        ch = _channel(guild, config, key)
-        if ch is None:
-            continue
-        cp = ch.permissions_for(me)
-        perms += [f"{CHANNEL_LABELS[key]}: {p}" for p in needed if not getattr(cp, p, False)]
-    active_logs = [k for k in st.LOG_KEYS if _channel(guild, config, k) is not None]
-    for key in active_logs:
-        cp = _channel(guild, config, key).permissions_for(me)
+def log_checks(guild: discord.Guild, config: Dict[str, str], bot: Optional[commands.Bot]):
+    """Server-Logs: Rechte in den Log-Kanälen, Audit-Log, Message Content Intent für den msg-log."""
+    perms, lines = [], []
+    active = [k for k in st.LOG_KEYS if _channel(guild, config, k) is not None]
+    for key in active:
+        cp = _channel(guild, config, key).permissions_for(guild.me)
         perms += [f"{st.LOG_KEYS[key]}: {p}" for p in LOG_PERMS if not getattr(cp, p, False)]
-    if active_logs and not gp.view_audit_log:
+    if active and not guild.me.guild_permissions.view_audit_log:
         perms.append("Server: view_audit_log (wer etwas geändert hat)")
-    if perms:
-        lines.append(t("setup_perm", items=", ".join(perms)))
-    forum = _channel(guild, config, "vorfallforum")
-    if isinstance(forum, discord.ForumChannel):
-        have = [tag.name for tag in forum.available_tags]
-        tags = [n for n in st.REPORT_TAGS if not st.has_tag(have, n)]
-        if tags:
-            lines.append(t("setup_forum_tags", items=", ".join(tags)))
-    elif forum is not None:
-        lines.append(t("setup_not_forum"))
-    lead = _role(guild, config, "fuehrung")
-    if lead is not None and not lead.mentionable and not gp.mention_everyone:
-        lines.append(t("setup_lead_mention", role=lead.name))
-    if message_content is False and _channel(guild, config, "log_msg") is not None:
+    if bot is not None and not bot.intents.message_content and _channel(guild, config, "log_msg") is not None:
         lines.append(t("setup_msg_intent"))
-    return lines
+    return lines, perms
 
 
-async def notify_verwaltung(guild: discord.Guild, text: str = None, **kwargs):
-    """Nachricht an die Führung im Kanal Verwaltung (falls eingerichtet); nie mit Pings. Liefert die Nachricht."""
-    config = await db.get_config(guild.id)
-    ch = _channel(guild, config, "verwaltung")
-    if ch is None:
-        return None
-    try:
-        return await ch.send(text, allowed_mentions=discord.AllowedMentions.none(), **kwargs)
-    except discord.HTTPException as exc:
-        log.warning("Kanal Verwaltung nicht beschreibbar (%s): %s", guild.id, exc)
-        return None
+def log_field(guild: discord.Guild, config: Dict[str, str]):
+    return t("setup_logs"), "\n".join(
+        f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
+        for key, label in st.LOG_KEYS.items()) + "\n" + t("setup_msg_days", days=st.msg_days(config))
+
+
+core.EXTRA_CHECKS.append(log_checks)
+core.EXTRA_FIELDS.append(log_field)
 
 
 @app_commands.guild_only()
 @app_commands.default_permissions(administrator=True)
-class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot einrichten (nur Admins)"):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-        super().__init__()
+class SetupCog(core.SetupBase, group_name="setup", group_description="GFK-Bot einrichten (nur Admins)"):
+    async def cog_load(self):
+        panels_mod.AFTER_POST["info"] = lambda guild, _fresh: post_info(guild)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        if interaction.guild is None or not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message(t("admin_only"), ephemeral=True)
-            return False
-        return True
-
-    async def _save(self, interaction: discord.Interaction, values: Dict[str, Optional[str]], labels: List[str]):
-        if not values:
-            await interaction.response.send_message(t("setup_nothing"), ephemeral=True)
-            return
-        await db.set_config(interaction.guild_id, values)
-        items = ", ".join(labels)
-        await interaction.response.send_message(t("setup_saved", items=items), ephemeral=True)
-        await notify_verwaltung(interaction.guild, t("log_setup", user=interaction.user.mention, items=items))
+    async def cog_unload(self):
+        panels_mod.AFTER_POST.pop("info", None)
 
     @app_commands.command(name="rollen", description="Status-Rollen festlegen")
     @app_commands.rename(fuehrung="führung")
     async def roles(self, interaction: discord.Interaction, admiral: Optional[discord.Role] = None,
                     fuehrung: Optional[discord.Role] = None, mitglied: Optional[discord.Role] = None,
                     freund: Optional[discord.Role] = None, gast: Optional[discord.Role] = None):
-        given = {"admiral": admiral, "fuehrung": fuehrung, "mitglied": mitglied, "freund": freund, "gast": gast}
-        values = {st.role_key(k): str(r.id) for k, r in given.items() if r is not None}
-        labels = [f"{st.ROLE_KEYS[k]} = {r.name}" for k, r in given.items() if r is not None]
-        await self._save(interaction, values, labels)
+        await self.save_given(interaction, roles={"admiral": admiral, "fuehrung": fuehrung, "mitglied": mitglied,
+                                                  "freund": freund, "gast": gast})
 
     @app_commands.command(name="kanäle", description="Kanäle des Bots festlegen")
     @app_commands.describe(namen_zusatz="Optional: weiterer Kanal mit der Nachricht „Namen ändern“",
@@ -154,12 +79,10 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
                        namen_zusatz: Optional[discord.TextChannel] = None,
                        namensaenderungen: Optional[discord.Thread] = None,
                        logbuch: Optional[discord.ForumChannel] = None):
-        given = {"eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
-                 "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz,
-                 "namen_log": namensaenderungen, "logbuch": logbuch}
-        values = {st.channel_key(k): str(c.id) for k, c in given.items() if c is not None}
-        labels = [f"{CHANNEL_LABELS[k]} = #{c.name}" for k, c in given.items() if c is not None]
-        await self._save(interaction, values, labels)
+        await self.save_given(interaction, channels={
+            "eingang": eingang, "meldungen": meldungen, "vorfallforum": vorfallforum, "events": events,
+            "event_kategorie": event_kategorie, "verwaltung": verwaltung, "eingang_info": namen_zusatz,
+            "namen_log": namensaenderungen, "logbuch": logbuch})
 
     @app_commands.command(name="logs", description="Kanäle der Server-Logs festlegen (ersetzt SCNX)")
     @app_commands.describe(user="Beitritt, Austritt, Nickname, Rollen, Kick/Bann/Timeout", rollen="Rollen geändert",
@@ -182,34 +105,6 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
     async def log_off(self, interaction: discord.Interaction, art: app_commands.Choice[str]):
         await self._save(interaction, {st.channel_key(art.value): None}, [t("setup_log_off", log=art.name)])
 
-    @app_commands.command(name="erinnerung", description="Wie viele Minuten vor einem Event erinnert wird")
-    async def reminder(self, interaction: discord.Interaction,
-                       minuten: app_commands.Range[int, st.REMINDER_MIN, st.REMINDER_MAX]):
-        await db.set_config(interaction.guild_id, {st.REMINDER_KEY: str(minuten)})
-        await interaction.response.send_message(t("setup_reminder", minutes=minuten), ephemeral=True)
-
-    @app_commands.command(name="anzeigen", description="Aktuelle Einstellungen und Prüfung der Rechte")
-    async def show(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        config = await db.get_config(guild.id)
-        embed = discord.Embed(title=t("setup_title"), color=discord.Color.blurple())
-        embed.add_field(name=t("setup_roles"), inline=False, value="\n".join(
-            f"{label}: {r.mention if (r := _role(guild, config, key)) else t('setup_unset')}"
-            for key, label in st.ROLE_KEYS.items()))
-        embed.add_field(name=t("setup_channels"), inline=False, value="\n".join(
-            f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_unset')}"
-            for key, label in st.CHANNEL_KEYS.items()) + "\n" + "\n".join(
-            f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
-            for key, label in st.OPTIONAL_CHANNEL_KEYS.items()))
-        embed.add_field(name=t("setup_logs"), inline=False, value="\n".join(
-            f"{label}: {c.mention if (c := _channel(guild, config, key)) else t('setup_off')}"
-            for key, label in st.LOG_KEYS.items()) + "\n" + t("setup_msg_days", days=st.msg_days(config)))
-        embed.add_field(name=t("setup_reminder_field"), inline=False,
-                        value=t("setup_reminder_value", minutes=st.reminder_minutes(config)))
-        problems = status_lines(guild, config, self.bot.intents.message_content)
-        embed.add_field(name=t("setup_checks"), inline=False, value="\n".join(problems) or t("setup_ok"))
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
     @app_commands.command(name="abgleich", description="Bestehende [GFK]-Mitglieder einmalig mit stfc.pro verknüpfen")
     async def link(self, interaction: discord.Interaction):
         from gfk.cogs.onboarding import link_existing, link_report, update_unlinked_list
@@ -222,77 +117,19 @@ class SetupCog(commands.GroupCog, group_name="setup", group_description="GFK-Bot
         await interaction.followup.send(embed=link_report(linked, already, missing, untagged), ephemeral=True)
         await update_unlinked_list(interaction.guild)
 
-    @app_commands.command(name="panels", description="Feste Nachrichten (Buttons) posten oder aktualisieren")
-    async def panels(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        posted, missing = await post_panels(interaction.guild)
-        if missing:
-            await interaction.followup.send(t("panels_missing", items=", ".join(missing)), ephemeral=True)
-        if posted:
-            await interaction.followup.send(t("panels_posted", items=", ".join(posted)), ephemeral=True)
-
-    @app_commands.command(name="uninstall", description="Alle Daten des Bots löschen und den Server verlassen")
-    async def uninstall(self, interaction: discord.Interaction):
-        await interaction.response.send_message(t("uninstall_confirm"), view=UninstallView(self.bot, interaction.user.id),
-                                                ephemeral=True)
-
-
-class UninstallView(SafeView):
-    """Rückfrage vor dem Deinstallieren; beim Klick wird das Admin-Recht noch einmal geprüft."""
-
-    def __init__(self, bot: commands.Bot, user_id: int):
-        super().__init__(timeout=120)
-        self.bot, self.user_id = bot, user_id
-        self.confirm.label, self.abort.label = t("uninstall_yes"), t("uninstall_no")
-
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.user_id and interaction.user.guild_permissions.administrator
-
-    @discord.ui.button(style=discord.ButtonStyle.danger)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.stop()
-        guild = interaction.guild                         # nach dem Verlassen liefert interaction.guild nichts mehr
-        await interaction.response.edit_message(content=t("uninstall_running"), view=None)
-        await uninstall_guild(self.bot, guild, interaction.user)
-        await interaction.edit_original_response(content=t("uninstall_done"))
-        await guild.leave()
-        await db.clear_guild_data(guild.id)               # was bis zum Verlassen noch geschrieben wurde
-        log.info("Deinstalliert auf %s durch %s.", guild.id, interaction.user.id)
-
-    @discord.ui.button(style=discord.ButtonStyle.secondary)
-    async def abort(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.stop()
-        await interaction.response.edit_message(content=t("uninstall_aborted"), view=None)
-
-
-async def uninstall_guild(bot: commands.Bot, guild: discord.Guild, actor: discord.abc.User):
-    """Alles entfernen, was ohne den Bot nicht mehr funktioniert (offene Events, Button-Nachrichten, Karten), dann die
-    Daten löschen. Rollen, Kanäle, Nicknames und Vorfall-Beiträge bleiben."""
-    events = bot.get_cog("EventsCog")
-    if events is not None:
-        await events.remove_all(guild)
-    config = await db.get_config(guild.id)
-    own = [(key, config.get(msg_key)) for _kind, key, msg_key, _required in _panel_targets()]
-    own += [("verwaltung", config.get(k)) for k in ("info_verwaltung", "verw_unlinked_msg")]
-    own += [("verwaltung", m) for m in await db.all_notices(guild.id)]
-    for channel_key, message_id in own:
-        channel = _channel(guild, config, channel_key)
-        if channel is not None and message_id:
-            try:
-                await channel.get_partial_message(int(message_id)).delete()
-            except discord.HTTPException:
-                pass
-    await notify_verwaltung(guild, t("uninstall_note", user=actor.mention))
-    await db.clear_guild_data(guild.id)
-
-
-def _panel_targets():
-    """(Art, Kanal-Schlüssel, Config-Schlüssel der Nachricht, Pflicht) aller festen Nachrichten."""
-    targets = []
-    for kind, (channel_key, *_rest) in PANELS.items():
-        targets.append((kind, channel_key, f"panel_{kind}", True))
-        targets += [(kind, k, f"panel_{kind}_{k}", False) for k in st.PANEL_EXTRA_CHANNELS.get(kind, [])]
-    return targets
+    async def uninstall_cleanup(self, guild: discord.Guild):
+        """Deinstallation: Erklärung, Liste "Noch nicht verknüpft" und offene Karten in Verwaltung entfernen."""
+        config = await db.get_config(guild.id)
+        channel = _channel(guild, config, "verwaltung")
+        if channel is None:
+            return
+        ids = [config.get(k) for k in ("info_verwaltung", "verw_unlinked_msg")] + await db.all_notices(guild.id)
+        for message_id in ids:
+            if message_id:
+                try:
+                    await channel.get_partial_message(int(message_id)).delete()
+                except discord.HTTPException:
+                    pass
 
 
 async def post_info(guild: discord.Guild):
@@ -325,42 +162,6 @@ async def post_info(guild: discord.Guild):
     except discord.HTTPException:
         pass
     await db.set_config(guild.id, {"info_verwaltung": str(message.id)})
-
-
-async def post_panels(guild: discord.Guild):
-    """Postet die festen Nachrichten oder bearbeitet die vorhandenen (damit sie oben im Kanal bleiben)."""
-    config = await db.get_config(guild.id)
-    posted, missing, updates, fresh = [], [], {}, set()
-    for kind, channel_key, msg_key, required in _panel_targets():
-        ch = _channel(guild, config, channel_key)
-        if ch is None:
-            if required:
-                missing.append(st.CHANNEL_KEYS[channel_key])
-            continue
-        embed, view = panel_message(kind)
-        msg_id = config.get(msg_key)
-        message = None
-        if msg_id:
-            try:
-                message = await ch.fetch_message(int(msg_id))
-                await message.edit(embed=embed, view=view)
-            except discord.NotFound:
-                message = None
-        if message is None:
-            message = await ch.send(embed=embed, view=view)
-            updates[msg_key] = str(message.id)
-            if required:
-                fresh.add(kind)
-        posted.append(f"#{ch.name}")
-    if updates:
-        await db.set_config(guild.id, updates)
-    await post_info(guild)
-    for kind, hook in list(panels_mod.AFTER_POST.items()):
-        try:
-            await hook(guild, kind in fresh)
-        except Exception:
-            log.exception("Nach dem Posten von %s fehlgeschlagen", kind)
-    return posted, missing
 
 
 async def setup(bot: commands.Bot):

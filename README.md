@@ -47,6 +47,8 @@ nur die normale Allianzseite, höchstens alle 15 Minuten, eigener User-Agent; di
 
 ## Entwicklung
 
+- Klonen mit Submodul: `git clone --recurse-submodules …` (oder danach `git submodule update --init`).
+  Neuer botcore-Stand: `git -C bot-core pull`, Tests laufen lassen, Submodul-Stand committen.
 - Unit-Tests (ohne Netz): `docker run --rm --network none -v $PWD:/src:ro -w /src gfk-bot python -m unittest
   discover -s tests`
 - Test-Server (nur mit `GFK_DEV_GUILD`, nie auf dem echten Server): `python -m gfk.devtools seed|panels|status`
@@ -55,16 +57,16 @@ nur die normale Allianzseite, höchstens alle 15 Minuten, eigener User-Agent; di
 
 | Pfad | Inhalt |
 |---|---|
-| `gfk/main.py` | Start, Lebenszeichen (Docker-Healthcheck), Fehlerbehandlung, Anmeldung der Befehle |
-| `gfk/db.py` | SQLite |
-| `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss, und Prüfungen |
-| `gfk/cogs/setup.py` | `/setup`, feste Nachrichten, Info für die Führung |
+| `bot-core/` | Git-Submodul [Gladi/bot-core](https://github.com/Gladi/bot-core): Meldungen, Events, Start, DB-Grundlage, `/setup`-Grundlage (gemeinsam mit dem OUT-Bot) |
+| `gfk/__init__.py` | `botcore.configure` (Name, Kürzel GFK, Button-Präfix `gfk`, Datenbank `gfk.db`) |
+| `gfk/main.py` | Start (Module, Server-Variablen, Lebenszeichen-Datei) |
+| `gfk/db.py` | SQLite: botcore-Tabellen plus Mitglieder, stfc.pro-Liste, Karten, Rollen-Protokoll |
+| `gfk/settings.py` | Rollen/Kanäle, die der Bot kennen muss |
+| `gfk/cogs/setup.py` | GFK-Teil von `/setup` (rollen, kanäle, logs, abgleich), Info für die Führung |
 | `gfk/cogs/onboarding.py`, `roles.py` | Eingangskontrolle, Status-Rollen, Abgleich mit stfc.pro |
-| `gfk/cogs/reports.py`, `gfk/reportstats.py` | Meldungen, Aufräumen, Statistik |
-| `gfk/cogs/events.py`, `gfk/eventlogic.py` | Eventplanung; Zeit-Eingaben und Fälligkeiten ohne Discord |
 | `gfk/cogs/logs.py`, `gfk/logfmt.py` | Server-Logs |
 | `gfk/stfc.py`, `gfk/names.py` | stfc.pro-Liste, Nicknames und Status-Regeln |
-| `gfk/texts.py` | alle Texte (Deutsch) |
+| `gfk/texts.py` | GFK-eigene Texte (Deutsch), ergänzen die aus botcore |
 | `gfk/devtools.py` | Werkzeuge nur für den Test-Server |
 
 ## Lizenz

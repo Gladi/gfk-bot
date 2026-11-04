@@ -11,5 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+# botcore (gemeinsamer Code, Git-Submodul bot-core)
+ENV PYTHONPATH=/app/bot-core
 
 CMD ["python", "-u", "-m", "gfk.main"]

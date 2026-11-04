@@ -15,6 +15,7 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
+from botcore.access import status_of
 from gfk import db, logfmt, names, settings as st, stfc
 from gfk.cogs.setup import notify_verwaltung
 from gfk.texts import t
@@ -25,12 +26,6 @@ log = logging.getLogger("gfk.onboarding")
 
 SYNC_HOURS = 24
 LEAVE_LIMIT = 5                 # mehr Austritte in einem Abgleich -> nur melden (Schutz gegen eine kaputte Liste)
-
-
-def status_of(member: discord.Member, config: Dict[str, str]) -> Set[str]:
-    """Status-Schlüssel ("admiral", "fuehrung" …) der Rollen, die das Mitglied hat."""
-    ids = {r.id for r in member.roles}
-    return {k for k in st.STATUS_ROLES if (v := config.get(st.role_key(k))) and int(v) in ids}
 
 
 async def alliance_for_status(guild_id: int, member: discord.Member) -> str:

@@ -97,14 +97,5 @@ def choices(actor_status: Set[str], target_status: Set[str], alliance: Optional[
     return out
 
 
-# Wer den Bot nutzen darf (Meldungen, Events): nur allianzintern
-INTERNAL = {"mitglied", "fuehrung", "admiral"}
-LEAD = {"fuehrung", "admiral"}            # der Admiral zählt zur Führung
-
-
-def is_internal(status: Set[str]) -> bool:
-    return bool(status & INTERNAL)
-
-
-def is_lead(status: Set[str]) -> bool:
-    return bool(status & LEAD)
+# Wer den Bot nutzen darf (Meldungen, Events): nur allianzintern - wie in botcore.access
+from botcore.access import INTERNAL, LEAD, is_internal, is_lead  # noqa: E402,F401

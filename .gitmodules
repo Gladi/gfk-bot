@@ -1,0 +1,3 @@
+[submodule "bot-core"]
+	path = bot-core
+	url = https://github.com/Gladi/bot-core.git

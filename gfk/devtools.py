@@ -17,7 +17,8 @@ import sys
 
 import discord
 
-from gfk import db, eventlogic as el, settings as st
+from botcore import eventlogic as el
+from gfk import db, settings as st
 from gfk.cogs.setup import post_panels, status_lines
 
 CATEGORY = "gfk-bot"
@@ -68,7 +69,7 @@ async def seed(guild: discord.Guild):
     await guild.edit_role_positions(positions={r: max(1, p) for r, p in positions.items()}, reason="GFK-Test")
     print("  Rollen:", ", ".join(ROLE_ORDER))
     await db.set_config(guild.id, values)
-    from gfk.cogs.reports import ensure_tags, missing_tags
+    from botcore.cogs.reports import ensure_tags, missing_tags
     await ensure_tags(guild)
     forum = guild.get_channel(int(values.get(st.channel_key("vorfallforum"), 0) or 0))
     if isinstance(forum, discord.ForumChannel):
@@ -88,8 +89,8 @@ class Check:
 
 async def selftest(client: discord.Client, guild: discord.Guild):
     """Ablauf ohne Klicks: Meldung anlegen und erledigen; allianzweites und privates Event mit vorgespulter Uhr."""
-    from gfk.cogs import reports
-    from gfk.cogs.events import EventsCog
+    from botcore.cogs import reports
+    from botcore.cogs.events import EventsCog
     check = Check()
     me = guild.me
     config = await db.get_config(guild.id)

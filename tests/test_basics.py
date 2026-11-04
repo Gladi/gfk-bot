@@ -82,8 +82,41 @@ class PanelTests(unittest.TestCase):
 class TextTests(unittest.TestCase):
     def test_all_texts_format(self):
         for key, text in T.items():
-            fields = re.findall(r"\{(\w+)\}", text)
-            self.assertTrue(t(key, **{f: "x" for f in fields}) if fields else t(key))
+            fields = set(re.findall(r"\{(\w+)\}", text)) - {"bot", "tag"}
+            self.assertTrue(t(key, **{f: "x" for f in fields}))
+
+    def test_gfk_wording_unchanged(self):
+        self.assertEqual(t("internal_only_event"), "🔒 Events sind nur für GFK-Mitglieder.")
+        self.assertTrue(t("internal_only_report").endswith("Gäste und Freunde melden bitte von Hand in ihrem Forum."))
+        self.assertEqual(t("setup_title"), "⚙️ GFK-Bot - Einstellungen")
+        self.assertIn("stfc.pro", t("uninstall_confirm"))
+
+
+class CompatTests(unittest.TestCase):
+    """Buttons alter Nachrichten auf dem GFK-Server tragen "gfk:" - die IDs dürfen sich nie ändern."""
+
+    def test_report_and_event_ids(self):
+        import datetime as dt
+        from botcore import eventlogic as el
+        from botcore.cogs import events, reports
+
+        async def go():
+            ids = [c.custom_id for c in reports.report_view(1, "roe").children]
+            self.assertEqual(ids, ["gfk:report:progress:1", "gfk:report:done:1"])
+            now = dt.datetime(2026, 11, 4, 18, 0, tzinfo=dt.timezone.utc)
+            ev = {"id": 3, "type": "alliance", "title": "Borg", "category": "armada", "start_at": el.iso(now),
+                  "end_at": el.iso(now), "description": "", "creator_id": 1, "status": "planned",
+                  "voice_channel_id": None, "thread_id": 9}
+            _, view = events.card(ev, {})
+            self.assertEqual([c.custom_id for c in view.children],
+                             [f"gfk:ev:{a}:3" for a in ("join", "maybe", "leave", "edit", "cancel")])
+        run(go())
+
+    def test_core_tables_and_gfk_tables(self):
+        db.init()
+        with db._conn() as conn:
+            tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertTrue({"config", "reports", "events", "members", "notices", "role_log", "stfc_roster"} <= tables)
 
 
 class ExtraPanelTests(unittest.TestCase):
